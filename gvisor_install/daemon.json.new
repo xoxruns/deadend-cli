@@ -1,0 +1,6 @@
+{
+  "path": "/usr/local/bin/runsc",
+  "runtimeArgs": [
+    "--overlay2=all:memory"
+  ]
+}
