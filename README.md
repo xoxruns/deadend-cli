@@ -86,7 +86,11 @@ To do so open ZAP proxy (UI) and go to *Tools->Options->API* and you will find a
 
 ### Postgres Vector DB 
 To index the code source of a webpage, pgvector is used as a database to save the embeddings and relevant code sections. 
-
+A script is available to run an container for pgvector with default credentials :
+```bash
+# creates a container for pgvector with the following DB_URL="postgresql://postgres:postgres@localhost:54320/codeindexerdb"
+./pgvector/setup_pgvector.sh
+```
 
 ### Install with pipx
 We can use pipx to install directly : [https://github.com/pypa/pipx.git](https://github.com/pypa/pipx.git)
