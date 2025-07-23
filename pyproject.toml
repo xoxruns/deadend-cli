@@ -1,0 +1,97 @@
+[project]
+name = "deadend-cli"
+version = "0.0.2"
+authors = [
+  { name="Yassine Bargach", email="yassine.bargach@proton.me" },
+]
+description = "AI agent CLI for security research"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "asgiref>=3.8.1",
+    "asyncpg>=0.30.0",
+    "beautifulsoup4>=4.13.4",
+    "cssbeautifier>=1.15.4",
+    "docker>=7.1.0",
+    "dotenv>=0.9.9",
+    "httptools>=0.6.4",
+    "jsbeautifier>=1.15.4",
+    "lxml>=6.0.0",
+    "nest-asyncio>=1.6.0",
+    "numpy>=2.3.1",
+    "pgvector>=0.4.1",
+    "pydantic>=2.11.5",
+    "pydantic-ai>=0.2.12",
+    "pyright>=1.1.402",
+    "pytest-asyncio>=1.0.0",
+    "pyyaml>=6.0.2",
+    "readchar>=4.2.1",
+    "rich>=14.0.0",
+    "sqlalchemy>=2.0.41",
+    "textual>=3.5.0",
+    "tiktoken>=0.9.0",
+    "tree-sitter<0.22.0",
+    "tree-sitter-css>=0.23.2",
+    "tree-sitter-html>=0.23.2",
+    "tree-sitter-javascript>=0.23.1",
+    "tree-sitter-languages>=1.10.2",
+    "typer>=0.15.4",
+    "zaproxy>=0.4.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "deadend-cli",
+    "flake8>=7.2.0",
+    "isort>=6.0.1",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "pytest-mock>=3.14.1",
+]
+test = [
+    "pytest>=8.3.5",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.1.1",
+    "pytest-mock>=3.14.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+adopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+[tool.uv.sources]
+deadend-cli = { workspace = true }

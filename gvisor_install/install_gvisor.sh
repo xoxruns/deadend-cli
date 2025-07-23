@@ -86,18 +86,17 @@ install_gvisor() {
     if [ -f /etc/docker/daemon.json ]; then
         print_status "info" "Backing up existing Docker daemon configuration..."
         cp /etc/docker/daemon.json /etc/docker/daemon.json.bak
-        print_status "info" "Installing runsc runtime"
-        sudo runsc install
     else
         print_status "info" "Creating Docker daemon configuration file..."
         sudo touch /etc/docker/daemon.json
-        print_status "info" "Installing runsc runtime"
-        sudo runsc install
+ 
     fi
+    print_status "info" "Installing runsc runtime"
+    sudo runsc install
 
     print_status "info" "Adding overlay memory to runtime runsc"
-    sudo jq '.runtimes.runsc +={runtimeArgs: ["--overlay2=all:memory"]}' /etc/docker/daemon.json > /etc/docker/daemon.json
-
+    sudo jq '.runtimes.runsc +={runtimeArgs: ["--overlay2=all:memory"]}' gvisor_install/daemon.json > /etc/docker/daemon.json
+    cat /etc/docker/daemon.json
     # Restart Docker to apply changes
     print_status "info" "Restarting Docker service to apply changes..."
     systemctl restart docker
