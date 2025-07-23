@@ -88,10 +88,12 @@ To do so open ZAP proxy (UI) and go to *Tools->Options->API* and you will find a
 To index the code source of a webpage, pgvector is used as a database to save the embeddings and relevant code sections. 
 
 
-### Install with pip
+### Install with pipx
+We can use pipx to install directly : [https://github.com/pypa/pipx.git](https://github.com/pypa/pipx.git)
+
 The `deadend-cli` is available on pypi:
 ```bash
-pip install deadend-cli
+pipx install deadend-cli --include-deps 
 ```
 
 ### Build from source 
