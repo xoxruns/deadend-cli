@@ -50,24 +50,28 @@ class SourceCodeIndexer:
     async def crawl_target(self):
         # Instantiation the source code path 
         await self._crawl_files(self.target)
+        # TODO : Change this ugliness
         for url in self.url_data[self.target]:
-            response = requests.get(url)
-            url_filename = self._from_url_to_filename_path(url=url)
-            if len(url_filename.split("/")[-1])<=0:
-                add_filename = url_filename.split("/")[:-1]
-                add_filename.append("index.html")
-                url_filename = "/".join(add_filename)
-            filename_absolute = self.source_code_path.joinpath(url_filename)
-            path_file = str(filename_absolute).split('/')[:-1]
-            path_file_str = "/".join(path_file)
-            Path(path_file_str).mkdir(parents=True, exist_ok=True)
             try:
-                if os.path.isdir(filename_absolute):
-                    filename_absolute = str(filename_absolute)
-                    filename_absolute = f"{filename_absolute}_file"
-                with open(filename_absolute, 'wb') as f:
-                    f.write(response.content)
-            except FileNotFoundError as e :
+                response = requests.get(url)
+                url_filename = self._from_url_to_filename_path(url=url)
+                if len(url_filename.split("/")[-1])<=0:
+                    add_filename = url_filename.split("/")[:-1]
+                    add_filename.append("index.html")
+                    url_filename = "/".join(add_filename)
+                filename_absolute = self.source_code_path.joinpath(url_filename)
+                path_file = str(filename_absolute).split('/')[:-1]
+                path_file_str = "/".join(path_file)
+                Path(path_file_str).mkdir(parents=True, exist_ok=True)
+                try:
+                    if os.path.isdir(filename_absolute):
+                        filename_absolute = str(filename_absolute)
+                        filename_absolute = f"{filename_absolute}_file"
+                    with open(filename_absolute, 'wb') as f:
+                        f.write(response.content)
+                except FileNotFoundError as e :
+                    continue
+            except Exception as e:
                 continue
         return self.source_code_path
         
