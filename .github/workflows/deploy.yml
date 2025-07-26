@@ -40,16 +40,14 @@ jobs:
         with:
           node-version: 20
           cache: npm # or pnpm / yarn
-          cache-dependency-path: docs/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Install dependencies
         run: |
-          cd docs/
           npm ci 
       - name: Build with VitePress
         run: |
-          cd docs/
           npm run docs:build 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
