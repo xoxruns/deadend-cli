@@ -8,8 +8,8 @@ export default defineConfig({
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
-      { text: 'Home', link: '/' },
-      { text: 'Docs', link: '/markdown-examples' }
+      { text: 'Home', link: '/deadend-cli' },
+      { text: 'Docs', link: '/deadend-cli/markdown-examples' }
     ],
 
     sidebar: [
