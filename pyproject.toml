@@ -8,6 +8,8 @@ description = "AI agent CLI for security research"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.12.14",
     "asgiref>=3.8.1",
     "asyncpg>=0.30.0",
     "beautifulsoup4>=4.13.4",
@@ -20,6 +22,7 @@ dependencies = [
     "nest-asyncio>=1.6.0",
     "numpy>=2.3.1",
     "pgvector>=0.4.1",
+    "playwright>=1.54.0",
     "pydantic>=2.11.5",
     "pydantic-ai>=0.2.12",
     "pyright>=1.1.402",

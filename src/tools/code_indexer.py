@@ -52,7 +52,9 @@ class SourceCodeIndexer:
         await self._crawl_files(self.target)
         # TODO : Change this ugliness
         for url in self.url_data[self.target]:
+            pprint(url)
             try:
+
                 response = requests.get(url)
                 url_filename = self._from_url_to_filename_path(url=url)
                 if len(url_filename.split("/")[-1])<=0:

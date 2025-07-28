@@ -20,6 +20,7 @@ class WebpageCrawler(ZapConnector):
             time.sleep(2)
 
         urls = self.zap.spider.results(scan_id)
+
         return urls
 
     async def async_start_spider(self, target_url):
