@@ -23,7 +23,7 @@ class Resource:
     url: str
     resource_type: str
     method: str
-    hash: str | None = None 
+    file_hash: str | None = None 
     status_code: int | None = None
     size: int | None = None
     mime_type: str | None = None
@@ -33,11 +33,13 @@ class Resource:
 ```
 
 ### The target already exists in the cache
-If the folder exists, it means that the target has already been 
+If the folder exists, it means that the target has already been requested. To avoid redownloading everything (and later rechuncking everything), we added a file hash to each resource. 
+
+This file hash will be used to compute the merkle tree for the the whole folder. 
 
 
 
-```mermaid
+<!-- ```mermaid
 ---
 title: Web Resource extractor
 ---
@@ -45,4 +47,4 @@ erDiagram
     CUSTOMER ||--o{ ORDER : places
     ORDER ||--|{ LINE-ITEM : contains
     CUSTOMER }|..|{ DELIVERY-ADDRESS : uses
-```
+``` -->
