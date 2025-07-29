@@ -4,7 +4,6 @@ import json
 import time
 import aiofiles
 import aiohttp
-import os
 from urllib.parse import urlparse
 from playwright.async_api import async_playwright
 from dataclasses import dataclass
@@ -97,7 +96,8 @@ class WebResourceExtractor:
                 if screenshot:
                     await page.screenshot(path='page_screenshot.png', full_page=True)
                     print("Screenshot saved as page_screenshot.png")
-                    performance_metrics = await page.evaluate("""
+                
+                performance_metrics = await page.evaluate("""
                     JSON.stringify({
                         navigation: performance.getEntriesByType('navigation')[0],
                         resources: performance.getEntriesByType('resource').map(r => ({
@@ -192,24 +192,28 @@ class WebResourceExtractor:
                 await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _download_single_resource(self, session, resource: Resource, download_path: str):
-        """Download a single resource"""
+        import os
+        import pathlib
         try:
             async with session.get(resource.url) as response:
                 if response.status == 200:
-                    # Create filename from URL
                     parsed_url = urlparse(resource.url)
-                    filename = parsed_url.path.split('/')[-1] or 'index.html'
+                    path = parsed_url.path
+                    directory = parsed_url.path.split('/')[:-1]
+                    directory_str = '/'.join(directory)
                     
-                    # Add domain to avoid conflicts
                     domain = parsed_url.netloc.replace(':', '_')
-                    safe_filename = f"{domain}_{filename}"
-                    
-                    filepath = os.path.join(download_path, safe_filename)
+                    filename_path = f"{domain}{path}"
+                    if filename_path.split('/')[-1] == '':
+                        filename_path += 'index.html'
+                    dir_t = f"{download_path}{domain}{directory_str}"
+                    pathlib.Path(dir_t).mkdir(parents=True, exist_ok=True) 
+                    filepath = os.path.join(download_path, filename_path)
                     
                     async with aiofiles.open(filepath, 'wb') as f:
                         await f.write(await response.read())
                     
-                    print(f"Downloaded: {safe_filename}")
+                    print(f"Downloaded: {filename_path}")
         except Exception as e:
             print(f"Failed to download {resource.url}: {e}")
 
