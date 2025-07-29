@@ -418,6 +418,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "readchar" },
     { name = "rich" },
+    { name = "semantic-text-splitter" },
     { name = "sqlalchemy" },
     { name = "textual" },
     { name = "tiktoken" },
@@ -426,6 +427,7 @@ dependencies = [
     { name = "tree-sitter-html" },
     { name = "tree-sitter-javascript" },
     { name = "tree-sitter-languages" },
+    { name = "tree-sitter-typescript" },
     { name = "typer" },
     { name = "zaproxy" },
 ]
@@ -471,6 +473,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "readchar", specifier = ">=4.2.1" },
     { name = "rich", specifier = ">=14.0.0" },
+    { name = "semantic-text-splitter", specifier = ">=0.27.0" },
     { name = "sqlalchemy", specifier = ">=2.0.41" },
     { name = "textual", specifier = ">=3.5.0" },
     { name = "tiktoken", specifier = ">=0.9.0" },
@@ -479,6 +482,7 @@ requires-dist = [
     { name = "tree-sitter-html", specifier = ">=0.23.2" },
     { name = "tree-sitter-javascript", specifier = ">=0.23.1" },
     { name = "tree-sitter-languages", specifier = ">=1.10.2" },
+    { name = "tree-sitter-typescript", specifier = ">=0.23.2" },
     { name = "typer", specifier = ">=0.15.4" },
     { name = "zaproxy", specifier = ">=0.4.0" },
 ]
@@ -1914,6 +1918,23 @@ wheels = [
 ]
 
 [[package]]
+name = "semantic-text-splitter"
+version = "0.27.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/51/9d/7dab71effde362a1b20204dcb46a2c01f3ffefaa60cdc7c2c2931fb2306f/semantic_text_splitter-0.27.0.tar.gz", hash = "sha256:7f9d4e5811b19a20334f58919597bc0b82f75d11dbf63b942e148c84be5ec338", size = 280838 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/ad/8e0af20eae88874c821b25fa2ef3ca7e2a61d7e4a147dd8098dc24e233b3/semantic_text_splitter-0.27.0-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:9bf63b16352b730bcf06e01cef5d4419e7b9d0463596f345771c05c5170f06df", size = 8107688 },
+    { url = "https://files.pythonhosted.org/packages/12/cd/61136e40c7dc3e5962108565892c061bca7e8d1b578d47561869c22f1c14/semantic_text_splitter-0.27.0-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:1959c0bd0d4df36e61639b6ab509cce0c1446ec8a866b14ebf01a3d5f3d6c4bd", size = 8094268 },
+    { url = "https://files.pythonhosted.org/packages/26/84/8d064f886088d654f740575ab10731e6736600045f07f1b6c6f3e686e2ec/semantic_text_splitter-0.27.0-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:2e2febd6b2f3232bdcf92099d834fd97b6f0c233b877dc8a8aac3d77adc6027b", size = 8301302 },
+    { url = "https://files.pythonhosted.org/packages/64/87/27088a2c563566d20737cfdefbe0d56adc2b4939f52896fb7059663c597f/semantic_text_splitter-0.27.0-cp39-abi3-manylinux_2_28_armv7l.whl", hash = "sha256:5ce25b77a10821b598129f86a7ed8a39c759bdf0bb9986ac8399b76821f465f4", size = 8182646 },
+    { url = "https://files.pythonhosted.org/packages/62/31/ae3ccb73beb2679afece8c7d5f52df6bcd9f83207b7155ac13594b34f9bf/semantic_text_splitter-0.27.0-cp39-abi3-manylinux_2_28_ppc64le.whl", hash = "sha256:28861b4044fbc68db3b7c48aa775caef7f052f758a4f57123e70b691c2799ecb", size = 8654067 },
+    { url = "https://files.pythonhosted.org/packages/de/98/c4a6fa78ad4b96fd9518c19f4079b48239fa6802d36c931c5304271e14a3/semantic_text_splitter-0.27.0-cp39-abi3-manylinux_2_28_s390x.whl", hash = "sha256:038de8a4679638b496c1fe16f695e18804cca47701e6dc8cd5e868a6e1e5d1ef", size = 8544295 },
+    { url = "https://files.pythonhosted.org/packages/07/ec/5438496620595572b088aa66827c65b9d42aadddbb1eacc31cc21ab93533/semantic_text_splitter-0.27.0-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:597ca2587ff35e92f63ea14628d30f7cf048ef6ad5a6932ba402c7428235082f", size = 8407475 },
+    { url = "https://files.pythonhosted.org/packages/4f/c1/3ae8014b8cbb793a79440d68ee686944632485e3dc95e66a2bbb750c2409/semantic_text_splitter-0.27.0-cp39-abi3-win32.whl", hash = "sha256:9f96cff483ac88ca29276f742ba5e8b2486f0bcc675f37e507d4385bf3eb4ace", size = 7629240 },
+    { url = "https://files.pythonhosted.org/packages/d3/26/b856b35c8dbf4d6a80755eeb92b87d90ba052fddf7fad8be20cc1a9583a6/semantic_text_splitter-0.27.0-cp39-abi3-win_amd64.whl", hash = "sha256:427396dda54b4949c83b918e731147aa5837f76868a32274ff3f1b6f800f4019", size = 7822659 },
+]
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -2156,6 +2177,21 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/19/76/25bb32a9be1c476e388835d5c8de5af2920af055e295770003683896cfe2/tree_sitter_languages-1.10.2-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:1aeabd3d60d6d276b73cd8f3739d595b1299d123cc079a317f1a5b3c5461e2ca", size = 8956249 },
     { url = "https://files.pythonhosted.org/packages/52/01/8e2f97a444d25dde1380ec20b338722f733b6cc290524357b1be3dd452ab/tree_sitter_languages-1.10.2-cp312-cp312-win32.whl", hash = "sha256:fab8ee641914098e8933b87ea3d657bea4dd00723c1ee7038b847b12eeeef4f5", size = 8363094 },
     { url = "https://files.pythonhosted.org/packages/47/58/0262e875dd899447476a8ffde7829df3716ffa772990095c65d6de1f053c/tree_sitter_languages-1.10.2-cp312-cp312-win_amd64.whl", hash = "sha256:5e606430d736367e5787fa5a7a0c5a1ec9b85eded0b3596bbc0d83532a40810b", size = 8268983 },
+]
+
+[[package]]
+name = "tree-sitter-typescript"
+version = "0.23.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/fc/bb52958f7e399250aee093751e9373a6311cadbe76b6e0d109b853757f35/tree_sitter_typescript-0.23.2.tar.gz", hash = "sha256:7b167b5827c882261cb7a50dfa0fb567975f9b315e87ed87ad0a0a3aedb3834d", size = 773053 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/95/4c00680866280e008e81dd621fd4d3f54aa3dad1b76b857a19da1b2cc426/tree_sitter_typescript-0.23.2-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:3cd752d70d8e5371fdac6a9a4df9d8924b63b6998d268586f7d374c9fba2a478", size = 286677 },
+    { url = "https://files.pythonhosted.org/packages/8f/2f/1f36fda564518d84593f2740d5905ac127d590baf5c5753cef2a88a89c15/tree_sitter_typescript-0.23.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:c7cc1b0ff5d91bac863b0e38b1578d5505e718156c9db577c8baea2557f66de8", size = 302008 },
+    { url = "https://files.pythonhosted.org/packages/96/2d/975c2dad292aa9994f982eb0b69cc6fda0223e4b6c4ea714550477d8ec3a/tree_sitter_typescript-0.23.2-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4b1eed5b0b3a8134e86126b00b743d667ec27c63fc9de1b7bb23168803879e31", size = 351987 },
+    { url = "https://files.pythonhosted.org/packages/49/d1/a71c36da6e2b8a4ed5e2970819b86ef13ba77ac40d9e333cb17df6a2c5db/tree_sitter_typescript-0.23.2-cp39-abi3-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e96d36b85bcacdeb8ff5c2618d75593ef12ebaf1b4eace3477e2bdb2abb1752c", size = 344960 },
+    { url = "https://files.pythonhosted.org/packages/7f/cb/f57b149d7beed1a85b8266d0c60ebe4c46e79c9ba56bc17b898e17daf88e/tree_sitter_typescript-0.23.2-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:8d4f0f9bcb61ad7b7509d49a1565ff2cc363863644a234e1e0fe10960e55aea0", size = 340245 },
+    { url = "https://files.pythonhosted.org/packages/8b/ab/dd84f0e2337296a5f09749f7b5483215d75c8fa9e33738522e5ed81f7254/tree_sitter_typescript-0.23.2-cp39-abi3-win_amd64.whl", hash = "sha256:3f730b66396bc3e11811e4465c41ee45d9e9edd6de355a58bbbc49fa770da8f9", size = 278015 },
+    { url = "https://files.pythonhosted.org/packages/9f/e4/81f9a935789233cf412a0ed5fe04c883841d2c8fb0b7e075958a35c65032/tree_sitter_typescript-0.23.2-cp39-abi3-win_arm64.whl", hash = "sha256:05db58f70b95ef0ea126db5560f3775692f609589ed6f8dd0af84b7f19f1cbb7", size = 274052 },
 ]
 
 [[package]]

@@ -175,7 +175,6 @@ class WebResourceExtractor:
                 }
 
     async def _download_resources(self, download_path: str):
-        """Download all resources to local folder"""
         import os
         os.makedirs(download_path, exist_ok=True)
         
