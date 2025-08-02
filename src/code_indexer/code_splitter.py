@@ -8,23 +8,24 @@ from typing import List
 
 
 class Chunker:
-    def __init__(self, file_path: str, language: str, code: bool):
+    def __init__(self, file_path: str, language: str, code: bool, tiktoken_model: str):
         self.file_path = file_path
         self.language = language
         self.code = code
+        self.tiktoken_model = tiktoken_model
     
     def chunk_file(self, size_chunk: int) -> List[str]:
         if self.code:
             if self.language == 'javascript':
-                splitter = CodeSplitter(tree_js.language(), size_chunk)
+                splitter = CodeSplitter.from_tiktoken_model(tree_js.language(),self.tiktoken_model, size_chunk)
             elif self.language == 'typescript':
-                splitter = CodeSplitter(tree_ts.language_typescript(), size_chunk)
+                splitter = CodeSplitter.from_tiktoken_model(tree_ts.language_typescript(), self.tiktoken_model, size_chunk)
             elif self.language == 'typescriptx':
                 splitter = CodeSplitter(tree_ts.language_tsx(), size_chunk)
             elif self.language == 'html':
-                splitter = CodeSplitter(tree_html.language(), size_chunk)
+                splitter = CodeSplitter.from_tiktoken_model(tree_html.language(), self.tiktoken_model, size_chunk)
             elif self.language == 'css':
-                splitter = CodeSplitter(tree_css.language(), size_chunk)
+                splitter = CodeSplitter.from_tiktoken_model(tree_css.language(), self.tiktoken_model, size_chunk)
 
             beautifier = Beautifier()
             code_content = ""

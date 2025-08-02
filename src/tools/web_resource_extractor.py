@@ -43,12 +43,12 @@ class WebResourceExtractor:
             # Using chromium
             browser = await play.chromium.launch(
                 headless=True, 
-                args=[
-                    '--disable-web-security',
-                    '--disable-features=TranslateUI', 
-                    '--no-sandbox', 
-                    'disable-setuid-sandbox',
-                ]
+                # args=[
+                #     '--disable-web-security',
+                #     '--disable-features=TranslateUI', 
+                #     '--no-sandbox', 
+                #     'disable-setuid-sandbox',
+                # ]
             )
 
             ctx = await browser.new_context(
@@ -56,7 +56,7 @@ class WebResourceExtractor:
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             )
 
-            page = ctx.new_page()
+            page = await ctx.new_page()
             # Capturing all requests
             await page.route('**/*', self._handle_route)
             
@@ -205,7 +205,8 @@ class WebResourceExtractor:
                     filename_path = f"{domain}{path}"
                     if filename_path.split('/')[-1] == '':
                         filename_path += 'index.html'
-                    dir_t = f"{download_path}{domain}{directory_str}"
+                    dir_t = f"{download_path}/{domain}{directory_str}"
+                    print(dir_t)
                     pathlib.Path(dir_t).mkdir(parents=True, exist_ok=True) 
                     filepath = os.path.join(download_path, filename_path)
                     
@@ -250,3 +251,5 @@ class WebResourceExtractor:
             json.dump(data, f, indent=2)
         
         print(f"Resources exported to {filename}")
+        return data 
+    
