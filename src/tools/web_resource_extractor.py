@@ -213,7 +213,6 @@ class WebResourceExtractor:
                     async with aiofiles.open(filepath, 'wb') as f:
                         await f.write(await response.read())
                     
-                    print(f"Downloaded: {filename_path}")
         except Exception as e:
             print(f"Failed to download {resource.url}: {e}")
 

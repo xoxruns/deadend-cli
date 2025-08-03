@@ -94,7 +94,7 @@ async def chat_interface(prompt, target, openapi_spec):
         crawling_data = ""
         if target and config.zap_api_key:
             # Crawling to webpage and downloading assets 
-            code_indexer = SourceCodeIndexer(target=target, zap_api_key=config.zap_api_key)
+            code_indexer = SourceCodeIndexer(target=target)
             resources = await chat_interface.wait_response(
                 func=code_indexer.crawl_target, status="Gathering webpage and indexing source code.."
             )

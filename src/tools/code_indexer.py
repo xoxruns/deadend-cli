@@ -4,15 +4,11 @@ import re
 
 from rich.pretty import pprint
 from typing import List
-from jsbeautifier import Beautifier
-from bs4 import BeautifulSoup as bs
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI
 from uuid import uuid4
 from pathlib import Path
 from urllib.parse import urlparse
 
-from src.code_indexer.code_chunker import CodeChunker
-from .crawler import WebpageCrawler
 from ..rag.database import CodeSection
 from src.tools.web_resource_extractor import WebResourceExtractor
 from src.code_indexer.code_splitter import Chunker
@@ -30,13 +26,12 @@ class SourceCodeIndexer:
     - HTML and Javascript 
     """
 
-    def __init__(self, target: str, zap_api_key: str | None ) -> None:
+    def __init__(self, target: str) -> None:
         """
         Initializes the SourceCodeIndexer object.
         
         Args:
             target (str): The URL of the web application to index.
-            zap_api_key (str): API key for ZAP, used by the WebpageCrawler to scan the target.
         
         This constructor sets up the cache directory for storing crawled data and
         initializes the WebpageCrawler instance for crawling the target website.
@@ -60,20 +55,6 @@ class SourceCodeIndexer:
         )
         return self.resources
 
-    def _from_url_to_filename_path(self, url: str) -> str:
-        filename_path = ""
-        if url.startswith('http://'):
-            filename_path = url[7:]
-        elif url.startswith('https://'):
-            filename_path = url[8:]
-        else:
-            filename_path = url 
-        return filename_path
-    
-    def _get_domain_url(self, url: str) -> str:
-        domain = urlparse(url=url).netloc
-        return domain 
-    
     def _add_session_to_cache(self):
         home_dir = Path.home()
         self.cache_path = home_dir.joinpath('.cache/deadend/webpages/')
@@ -100,7 +81,6 @@ class SourceCodeIndexer:
             for file in files:
                 if not self.is_file_vendor_specific(file):
                     if file.endswith(".js") or file.endswith(".jsx"):
-                        print(file)
                         code_chunker = Chunker('/'.join([subdir, file]), 'javascript', True, tiktoken_model='gpt-4o-mini')
                         file_chunks = code_chunker.chunk_file(2000)
                         url_path = subdir.replace(str(self.source_code_path), "")
@@ -127,7 +107,6 @@ class SourceCodeIndexer:
                                 chunks=file_chunks
                             )
                             code_sections.extend(new_cs)
-
                     else:
                         files_ignored.append(file)
         return code_sections
