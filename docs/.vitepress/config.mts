@@ -17,10 +17,11 @@ export default defineConfig({
         text: 'Get started',
         collapsed: true,
         items: [
-          { text: 'Introduction', link: '/markdown-examples' },
-          { text: 'Install', link: '/markdown-examples' },
-          { text: 'First tests', link: '/markdown-examples' },
-          { text: 'Usage', link: '/markdown-examples' },
+          { text: 'Introduction', link: '/introduction' },
+          { text: 'Install', link: '/installation' },
+          { text: 'first target', link: '/first-target' },
+          { text: 'Usage', link: '/usage' },
+          { text: 'Features', link: '/features'}
         ]
       },
       {
