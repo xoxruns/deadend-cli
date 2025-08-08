@@ -10,3 +10,11 @@ The agentic AI architecture needs to run programs and code. But this needs to be
 
 
 ## Python interpreter
+
+The python interpreter is sandboxed using WebAssembly and pyodide. The python interpreter can be spawned by the agents. It is capable to : 
+- Run standalone python files (copied beforehand from filesystem)
+- Import previously specified packages 
+- Run python generated code as string
+
+
+
