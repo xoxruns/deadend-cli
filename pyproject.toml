@@ -18,6 +18,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "httptools>=0.6.4",
     "jsbeautifier>=1.15.4",
+    "logfire>=4.3.3",
     "lxml>=6.0.0",
     "nest-asyncio>=1.6.0",
     "numpy>=2.3.1",

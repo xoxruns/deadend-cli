@@ -2,6 +2,7 @@ import asyncio
 import readchar
 import sys
 import typer
+import logfire
 from openai import AsyncOpenAI
 from rich import print
 from rich.prompt import Prompt, Confirm
@@ -25,7 +26,7 @@ config.configure()
 
 
 # Sandbox Manager
-sanbox_manager = SandboxManager()
+sandbox_manager = SandboxManager()
 
 
 @app.command()
@@ -33,21 +34,6 @@ def version():
     """Show the version of the Deadend framework."""
     print("[bold green]Deadend CLI[/bold green] version 0.1.0")
 
-# @app.command()
-# def agent(
-#     prompt: str = typer.Option(None, help="Send a prompt directly to agent mode."),
-#     target: str = typer.Option(None, help="Target URL or identifier for the agent."),
-#     openapi_spec: str = typer.Option(None, help="Path to the OpenAPI specification file.")
-# ):
-#     """Run in Agent Mode."""
-#     if prompt:
-#         print(f"[bold blue]Agent Mode prompt:[/bold blue] {prompt}")
-#     else:
-#         print("[bold blue]Agent Mode started[/bold blue]")
-#     if target:
-#         print(f"[cyan]Target:[/cyan] {target}")
-#     if openapi_spec:
-#         print(f"[green]OpenAPI Spec:[/green] {openapi_spec}")
 
 def get_ctrl_key():
     """Wait for a Ctrl+Letter keypress and return the letter (lowercase)."""
@@ -81,7 +67,13 @@ async def chat_interface(prompt, target, openapi_spec):
     # embedding_model = AIModel(
     #     model_name=config.embedding_model or "text-embedding-3-small", api_key=config.openai_api_key or ""
     # )
+    sandbox_id = sandbox_manager.create_sandbox()
+    
 
+    # Monitoring 
+
+    logfire.configure()
+    logfire.instrument_pydantic_ai()
     # Initializing the codeIndexer and the vector database
     rag_db = AsyncCodeChunkRepository(config.db_url or "" )
     await rag_db.initialize_database()

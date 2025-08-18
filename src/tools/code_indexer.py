@@ -1,15 +1,12 @@
-import requests
 import os
 import re
 
-from rich.pretty import pprint
 from typing import List
 from openai import AsyncOpenAI
 from uuid import uuid4
 from pathlib import Path
-from urllib.parse import urlparse
 
-from ..rag.database import CodeSection
+from src.rag.database import CodeSection
 from src.tools.web_resource_extractor import WebResourceExtractor
 from src.code_indexer.code_splitter import Chunker
 

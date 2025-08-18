@@ -94,7 +94,7 @@ class PlannerAgent(AgentRunner):
 
 class Planner:
     """
-    The planner is the orchestrator. 
+    The planner plans and tracks the information related to the goal
 
     We supply to it several information: 
     - the target URL

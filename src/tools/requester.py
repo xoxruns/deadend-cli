@@ -1,6 +1,7 @@
 import socket
 from asgiref.sync import sync_to_async
 import httptools
+import ssl
 
 from .zap_connector import ZapConnector 
 from ..utils.structures import *
@@ -22,19 +23,17 @@ class Requester(ZapConnector):
     
 
     @sync_to_async
-    def send_raw_data(self, host, port, request_data):
+    def send_raw_data(self, host, port, target_host, request_data):
         # checking if the request received has an HTTP format. 
         bytes_request=request_data.encode('utf-8')
         # parsed_data = parse_http_request(bytes_request)
         # if parsed_data!=None: 
-        response = send_raw_request(host=host, port=port, request=bytes_request)
+        response = send_raw_request(host=host, port=port,target_host=target_host, request=bytes_request)
         return response
         # else: 
         #     # TODO: a better error handling must be done here to return why the request is malformed.
         #     return "Malformed HTTP request. Something is wrong with the request data, retry with another one."
 
-    
-    
 
 def parse_http_request(raw_data):
     class RequestParser:
@@ -107,15 +106,23 @@ def parse_http_request(raw_data):
         return None 
     
 
-def send_raw_request(host, port, request):
+def send_raw_request(host, port, target_host, request):
+    # The ssl context here does not check the certificates
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    context.verify_flags = ssl.VERIFY_DEFAULT
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     response = ""
     try: 
         s.connect((host, port))
-        s.send(request)
-        response = s.recv(4096)
+        sso = context.wrap_socket(s, server_hostname=target_host)
+        sso.send(request)
+        response = sso.recv(4096)
     except socket.error as err: 
         print(f"An error has occured when sending request. :{err}".format(err))
         response = f"Request not send. Please retry. The error is : {err}".format(err)
+    sso.close()
     s.close()
     return response
