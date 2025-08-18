@@ -19,11 +19,11 @@ from ..utils.llm import extract_xml_to_list, extract_xml
 
 MAX_TEST_ITERATION = 3
 
-class PayloadResponse(BaseModel):
-    state: Literal["achieved", "failed"] = Field(..., 
-        description="State represents the decision from the analysis if it achieves the task.")
-    analysis: str = Field(..., description="Analysis of the HTTP response.")
-    response: str = Field(..., description="The http response from the tool.")
+# class PayloadResponse(BaseModel):
+#     state: Literal["achieved", "failed"] = Field(..., 
+#         description="State represents the decision from the analysis if it achieves the task.")
+#     analysis: str = Field(..., description="Analysis of the HTTP response.")
+#     response: str = Field(..., description="The http response from the tool.")
 
 class TestingGrounds:
     """
@@ -36,15 +36,20 @@ class TestingGrounds:
     calls the tools that he needs to. 
     Sends the results to the replan agent. 
     The replan agent decides to loop back and replan or exit. 
+
+    # TODO:
+    The testing grounds has a shared memory between all its agents. 
+    To build a specific context. 
+
     """
     def __init__(self, target_info: TargetDeps, model: AIModel, zap_api_key: str):
-        # self.task = task
         self.target_info = target_info
         self.message_history: Union[list[ModelMessage], None] = None
         self.zap_api_key: str = zap_api_key
         model_openai = OpenAIModel(model_name=model.model_name, provider=OpenAIProvider(api_key=model.api_key))
-
+        self.agent_results_context: str = ""
         self.model = model_openai
+
 
     async def craft_requests(self, task: Task, usage_a: Usage, usage_limits: UsageLimits) -> List[str]:
         if len(task.goal) == 0: 
@@ -83,7 +88,9 @@ class TestingGrounds:
                 user_prompt=f"""From the following output extract the requests and 
 send them to analyze the response. You should have everything to build a valid request 
 with the right host and information :
-{str(payloads)}                 
+{str(payloads)} 
+The previous runs are : 
+{self.agent_results_context}            
 """, 
                 deps=str(payloads),
                 message_history=self.message_history,
@@ -91,7 +98,7 @@ with the right host and information :
                 usage_limits=usage_limits
         )
         analysis.append(response.output)
-        
+        self.agent_results_context += str(analysis)
         return analysis
     
     async def shell_execute(self, sandbox: Sandbox, command_analysis: str, usage_a: Usage, usage_limits: UsageLimits) -> ShellOutput:
@@ -105,6 +112,10 @@ with the right host and information :
             sandbox=sandbox
         )
 
-        response = await shell_agent.run(user_prompt=command_analysis, deps=deps, message_history="", usage=usage_a, usage_limits=usage_limits)
-
+        response = await shell_agent.run(
+            user_prompt=command_analysis, 
+            deps=deps, message_history="", 
+            usage=usage_a, 
+            usage_limits=usage_limits
+        )
         return response

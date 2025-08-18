@@ -26,7 +26,7 @@ class SandboxManager:
         new_sb.start(container_image=image)
 
         self.sandboxes[sandbox_id] = new_sb
-        return new_sb
+        return sandbox_id
     
     def get_sandbox(self, sandbox_id: uuid.UUID) -> Sandbox | None:
         return self.sandboxes.get(sandbox_id)

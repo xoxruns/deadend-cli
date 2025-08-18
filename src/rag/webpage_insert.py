@@ -11,9 +11,6 @@ from src.tools.crawler import WebpageCrawler
 
 section_ta = TypeAdapter(CodeSection)
 
-
-
-
 async def insert_webpage(
         sem: asyncio.Semaphore,
         openai: AsyncOpenAI,

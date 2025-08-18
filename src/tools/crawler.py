@@ -16,10 +16,10 @@ class WebpageCrawler(ZapConnector):
         
         # Poll the status until the spider completes
         while int(self.zap.spider.status(scan_id)) < 100:
-            # print(f'crawling progress: {self.zap.spider.status(scan_id)}%')
             time.sleep(2)
 
         urls = self.zap.spider.results(scan_id)
+
         return urls
 
     async def async_start_spider(self, target_url):

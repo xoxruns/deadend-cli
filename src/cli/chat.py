@@ -52,9 +52,6 @@ class ChatInterface:
                 except asyncio.CancelledError:
                     pass
     
-    def message_panel(self):
-        pass
-    
     def print_chat_response(self, message: str, agent_name: str):
         # Panel(message, title=f"{agent_name}", border_style="magenta", box=ROUNDED)
         self.console.print(f"{agent_name}: {message}")
@@ -90,14 +87,11 @@ class ChatInterface:
     {resp}
 """
             message += formatted_task
-        self.console.print(Panel(message, title=title, border_style="magenta", box=ROUNDED))
+        self.console.print(Panel(message, title=title, border_style="red", box=ROUNDED))
 
     def startup(self):
         self.console.print("[bold green] Starting Agent Mode: Chat interface.[/bold green]")
         self.console.print("Type '/help' for commands, '/quit' to exit.")
-
-    # def print_chat_response(self, message: str, title: str):
-    #     print(Panel(response, title=title, border_style="magenta", box=ROUNDED))
 
     def prompt_user(self, title: str, message: str):
         """Panel for prompt user using Textual for interactive input."""

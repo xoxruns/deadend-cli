@@ -52,8 +52,6 @@ class AsyncCodeChunkRepository:
         if database_url.startswith("postgresql://"):
             database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
         
-
-
         self.engine = create_async_engine(
             database_url,
             pool_size=pool_size,
@@ -96,7 +94,7 @@ class AsyncCodeChunkRepository:
                             #    class_name: Optional[str] = None,
                             #    start_line: Optional[int] = None,
                             #    end_line: Optional[int] = None) 
-       )   -> CodeChunk:
+       ) -> CodeChunk:
         """
         Insert a code chunk with its embedding into the database.
         """

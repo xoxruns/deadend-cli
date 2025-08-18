@@ -1,18 +1,14 @@
-import requests
 import os
+import re
 
-from rich.pretty import pprint
 from typing import List
-from jsbeautifier import Beautifier
-from bs4 import BeautifulSoup as bs
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI
 from uuid import uuid4
 from pathlib import Path
-from urllib.parse import urlparse
 
-from src.code_indexer.code_chunker import CodeChunker
-from .crawler import WebpageCrawler
-from ..rag.database import CodeSection
+from src.rag.database import CodeSection
+from src.tools.web_resource_extractor import WebResourceExtractor
+from src.code_indexer.code_splitter import Chunker
 
 
 
@@ -27,13 +23,12 @@ class SourceCodeIndexer:
     - HTML and Javascript 
     """
 
-    def __init__(self, target: str, zap_api_key: str | None ) -> None:
+    def __init__(self, target: str) -> None:
         """
         Initializes the SourceCodeIndexer object.
         
         Args:
             target (str): The URL of the web application to index.
-            zap_api_key (str): API key for ZAP, used by the WebpageCrawler to scan the target.
         
         This constructor sets up the cache directory for storing crawled data and
         initializes the WebpageCrawler instance for crawling the target website.
@@ -42,61 +37,21 @@ class SourceCodeIndexer:
         self.session_id = uuid4()
         self._add_session_to_cache()
         self._add_chunk_directory()
-        
-        self.crawler = WebpageCrawler(api_key=zap_api_key)
+        self._load_patterns()
+        self.crawler = WebResourceExtractor()
         self.url_data = {}
 
 
     async def crawl_target(self):
-        # Instantiation the source code path 
-        await self._crawl_files(self.target)
-        # TODO : Change this ugliness
-        for url in self.url_data[self.target]:
-            try:
-                response = requests.get(url)
-                url_filename = self._from_url_to_filename_path(url=url)
-                if len(url_filename.split("/")[-1])<=0:
-                    add_filename = url_filename.split("/")[:-1]
-                    add_filename.append("index.html")
-                    url_filename = "/".join(add_filename)
-                filename_absolute = self.source_code_path.joinpath(url_filename)
-                path_file = str(filename_absolute).split('/')[:-1]
-                path_file_str = "/".join(path_file)
-                Path(path_file_str).mkdir(parents=True, exist_ok=True)
-                try:
-                    if os.path.isdir(filename_absolute):
-                        filename_absolute = str(filename_absolute)
-                        filename_absolute = f"{filename_absolute}_file"
-                    with open(filename_absolute, 'wb') as f:
-                        f.write(response.content)
-                except FileNotFoundError as e :
-                    continue
-            except Exception as e:
-                continue
-        return self.source_code_path
-        
+        self.resources = await self.crawler.extract_all_resources(
+            url=self.target, 
+            wait_time=3, 
+            screenshot=False, 
+            download_resources=True,
+            download_path=self.source_code_path
+        )
+        return self.resources
 
-    async def _crawl_files(self, target):
-        """Get all urls related to the target url""" 
-        urls = await self.crawler.async_start_spider(target_url=target)
-        self.url_data[target] = urls
-
-    def _from_url_to_filename_path(self, url: str) -> str:
-        filename_path = ""
-        if url.startswith('http://'):
-            filename_path = url[7:]
-        elif url.startswith('https://'):
-            filename_path = url[8:]
-        else:
-            filename_path = url 
-
- 
-        return filename_path
-    
-    def _get_domain_url(self, url: str) -> str:
-        domain = urlparse(url=url).netloc
-        return domain 
-    
     def _add_session_to_cache(self):
         home_dir = Path.home()
         self.cache_path = home_dir.joinpath('.cache/deadend/webpages/')
@@ -116,60 +71,47 @@ class SourceCodeIndexer:
         Chunk every JS and HTML file found in the session directory
         """
         openai = AsyncOpenAI(api_key=openai_api_key)
-        code_chunker = CodeChunker()
         files_ignored = []
         code_sections = []
 
         for subdir, dirs, files in os.walk(self.source_code_path):
             for file in files:
-                if file.endswith(".js") or file.endswith(".jsx"):
-                    content = ""
-                    with open('/'.join([subdir, file])) as fc:
-                        content = fc.read()
-                    beautifier = Beautifier()
-                    js_content = beautifier.beautify(content)
-                    file_chunks = code_chunker.chunk(content=js_content, language="javascript", token_limit=500)
-                    # pprint(file)
-                    url_path = subdir.replace(str(self.source_code_path), "")
-                    if file_chunks != None:
-                        new_cs = await self._embed_chunks(
-                            openai=openai,
-                            embedding_model=embedding_model, 
-                            url_path=url_path, 
-                            title=file, 
-                            chunks=file_chunks
-                        )
-                        code_sections.extend(new_cs)
-  
-                elif file.endswith("html"):
-                    # pprint(file)
-                    content = ""
-                    with open('/'.join([subdir, file])) as fc:
-                        content = fc.read()
-                    soup = bs(content, 'lxml')
-                    for style_tag in soup.find_all("style"):
-                        style_tag.decompose()
-                    html_code = soup.prettify() 
-                    file_chunks = code_chunker.chunk(content=str(html_code), language="html", token_limit=500)
-                    url_path = subdir.replace(str(self.source_code_path), "")
-                    if file_chunks != None:
-                        new_cs = await self._embed_chunks(
-                            openai=openai,
-                            embedding_model=embedding_model, 
-                            url_path=url_path, 
-                            title=file, 
-                            chunks=file_chunks
-                        )
-                        code_sections.extend(new_cs)
-
-                else:
-                    files_ignored.append(file)
+                if not self.is_file_vendor_specific(file):
+                    if file.endswith(".js") or file.endswith(".jsx"):
+                        code_chunker = Chunker('/'.join([subdir, file]), 'javascript', True, tiktoken_model='gpt-4o-mini')
+                        file_chunks = code_chunker.chunk_file(2000)
+                        url_path = subdir.replace(str(self.source_code_path), "")
+                        if file_chunks != None:
+                            new_cs = await self._embed_chunks(
+                                openai=openai,
+                                embedding_model=embedding_model, 
+                                url_path=url_path, 
+                                title=file, 
+                                chunks=file_chunks
+                            )
+                            code_sections.extend(new_cs)
+    
+                    elif file.endswith("html"):
+                        code_chunker = Chunker('/'.join([subdir, file]), 'html', True, tiktoken_model='gpt-4o-mini')
+                        file_chunks = code_chunker.chunk_file(2000)
+                        url_path = subdir.replace(str(self.source_code_path), "")
+                        if file_chunks != None:
+                            new_cs = await self._embed_chunks(
+                                openai=openai,
+                                embedding_model=embedding_model, 
+                                url_path=url_path, 
+                                title=file, 
+                                chunks=file_chunks
+                            )
+                            code_sections.extend(new_cs)
+                    else:
+                        files_ignored.append(file)
         return code_sections
 
-    async def _embed_chunks(self, openai: AsyncOpenAI, embedding_model: str, url_path: str, title: str, chunks: dict[str, str]) -> List[CodeSection]:
+    async def _embed_chunks(self, openai: AsyncOpenAI, embedding_model: str, url_path: str, title: str, chunks: List[str]) -> List[CodeSection]:
         code_sections = []
-        for chunk_number, chunk in chunks.items():
-            new_chunk = " ".join(chunk.split("\n"))
+        for chunk_number in range(0, len(chunks)):
+            new_chunk = " ".join(chunks[chunk_number].split("\n"))
             code_section = CodeSection(
                 url_path=url_path, 
                 title=title,
@@ -178,6 +120,25 @@ class SourceCodeIndexer:
             )
             await code_section.embed_content(openai=openai, embedding_model=embedding_model)
             if code_section.embeddings is not None:
-                code_sections.append(code_section)
+                code_sections.append(code_section)   
         
         return code_sections
+    
+    def _load_patterns(self):
+        import json
+        with open("./vendor_specific_files.json") as f: 
+            patterns_json = f.read()
+
+        self.forbidden_patterns = json.loads(patterns_json)
+
+    def is_file_vendor_specific(self, filename: str):
+        common_patterns = self.forbidden_patterns["generic"]
+        triggered_patterns = []
+        for pattern in common_patterns:
+            res = re.search(pattern=pattern, string=filename)
+            if res != None:
+                triggered_patterns.append(res.group())
+        if len(triggered_patterns)>0:
+            return True 
+        else:
+            return False

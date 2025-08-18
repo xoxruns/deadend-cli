@@ -48,11 +48,11 @@ class RequesterAgent(AgentRunner):
                 return False
             
         @self.agent.tool
-        async def send_payload(ctx: RunContext[str], raw_request:str) -> str | bytes:
+        async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str) -> str | bytes:
             requester = Requester(api_key=zap_api_key, verify_ssl=False)
             
             # localhost:8080 is the proxy
-            response = await requester.send_raw_data(host='localhost', port=8080, request_data=raw_request)
+            response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
             return response
 
 

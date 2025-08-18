@@ -1,5 +1,5 @@
 from typing import List, Dict, Any
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import RunContext
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.models.openai import OpenAIModel
@@ -7,12 +7,9 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
 from dataclasses import dataclass
-import asyncpg
 
-from ..utils.structures import TargetDeps, AIModel, Task
+from ..utils.structures import AIModel, Task
 from ..agents.agent import AgentRunner
-from ..tools.code_indexer import SourceCodeIndexer
-from .testing_grounds import TestingGrounds, AIModel
 from ..rag.code_indexer_db import AsyncCodeChunkRepository
 from config import Config
 
@@ -97,7 +94,7 @@ class PlannerAgent(AgentRunner):
 
 class Planner:
     """
-    The planner is the orchestrator. 
+    The planner plans and tracks the information related to the goal
 
     We supply to it several information: 
     - the target URL
