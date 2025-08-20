@@ -8,6 +8,10 @@ class Config:
     Configuration class that loads environment variables from a .env file
     and provides easy access to them for use with LangChain or other applications.
     """
+    openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
+    anthropic_api_key: str | None = os.getenv("ANTHROPIC_API_KEY")
+    gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
+
     @classmethod
     def configure(cls, env_file: str = ".env"):
         """
