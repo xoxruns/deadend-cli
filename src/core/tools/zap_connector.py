@@ -1,5 +1,5 @@
 from zapv2 import ZAPv2
-from config import Config
+from core.config.settings import Config
 import asyncio
 from functools import wraps
 

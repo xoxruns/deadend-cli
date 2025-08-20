@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from ..utils.structures import AIModel, Task
 from ..agents.agent import AgentRunner
 from ..rag.code_indexer_db import AsyncCodeChunkRepository
-from config import Config
+from core.config.settings import Config
 
 
 @dataclass

@@ -1,11 +1,11 @@
 import pytest
-from src.agents.testing_grounds import TestingGrounds, PayloadResponse
+from core.task_processor import TaskProcessor, PayloadResponse
 from pydantic_ai.usage import Usage, UsageLimits
 import requests
 import asyncio
 
-from config import Config
-from src.utils.structures import Task, AIModel, TargetDeps
+from core.config.settings import Config
+from core.utils.structures import Task, AIModel, TargetDeps
 
 """
 The following functions test the TestingGrounds setup. 

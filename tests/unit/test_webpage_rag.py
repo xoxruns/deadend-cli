@@ -1,7 +1,7 @@
 import pytest
 import asyncio
-from src.rag.webpage_insert import build_search_db
-from config import Config
+from core.rag.webpage_insert import build_search_db
+from core.config.settings import Config
 
 config_test = Config()
 config_test.configure()
