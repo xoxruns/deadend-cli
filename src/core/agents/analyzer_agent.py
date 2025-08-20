@@ -3,6 +3,7 @@ from pydantic_ai.usage import Usage, UsageLimits
 from pydantic_ai import RunContext
 from typing import Any
 
+from src.prompts import TemplateAgentRenderer
 from .agent import AgentRunner
 from ..utils.structures import TargetDeps
 

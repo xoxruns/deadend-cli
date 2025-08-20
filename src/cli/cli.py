@@ -9,13 +9,13 @@ from rich.prompt import Prompt, Confirm
 from pydantic_ai.usage import Usage, UsageLimits
 
 from config import Config
-from src.cli.chat import ChatInterface
-from src.agents.planner import Planner
-from src.agents.testing_grounds import TestingGrounds
-from src.tools.code_indexer import SourceCodeIndexer
-from src.utils.structures import AIModel, TargetDeps
-from src.rag.code_indexer_db import AsyncCodeChunkRepository
-from src.sandbox.sandbox_manager import SandboxManager
+from cli.chat import ChatInterface
+from core.agents.planner import Planner
+from core.task_processor import TaskProcessor
+from core.tools.code_indexer import SourceCodeIndexer
+from core.utils.structures import AIModel, TargetDeps
+from core.rag.code_indexer_db import AsyncCodeChunkRepository
+from core.sandbox.sandbox_manager import SandboxManager
 
 app = typer.Typer(help="Deadend CLI - interact with the Deadend framework.")
 # console = Console()
@@ -155,7 +155,7 @@ async def chat_interface(prompt, target, openapi_spec):
                     openai=AsyncOpenAI(api_key=config.openai_api_key), 
                     rag=rag_db
                 )
-                tg_agent = TestingGrounds(
+                tg_agent = TaskProcessor(
                     target_info=target_deps, 
                     model=model, 
                     zap_api_key=config.zap_api_key

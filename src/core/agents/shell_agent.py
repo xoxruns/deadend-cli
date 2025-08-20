@@ -6,7 +6,7 @@ from typing import Any
 from dataclasses import dataclass
 
 from .agent import AgentRunner
-from src.sandbox.sandbox import Sandbox, SandboxStatus
+from src.core.sandbox import Sandbox, SandboxStatus
 
 @dataclass
 class ShellDeps:
@@ -28,9 +28,10 @@ class ShellAgent(AgentRunner):
             self, 
             model: openai.OpenAIModel,
             deps_type: Any | None, 
-            tools: list = []
+            tools: list = [],
+            context_history: str = "",
     ):
-        self.instructions = ""
+        self.instructions = self._shell_agent_instructions(context_agent=context_history)
 
         super().__init__(
             model=model, 
@@ -40,6 +41,7 @@ class ShellAgent(AgentRunner):
             output_type=ShellOutput, 
             tools=tools
         )
+        
 
         @self.agent.tool
         def run_command(ctx: RunContext[ShellDeps], command: str) -> str:
@@ -57,9 +59,15 @@ class ShellAgent(AgentRunner):
         raise NotImplementedError
     
     def _shell_agent_instructions(self, **kwargs):
-
+        context_agent = ""
+        for key, value in kwargs.items():
+            if key=='context_history':
+                context_agent=f"""
+Since the start, here is the results of the running agents: 
+{value}
+"""
         return f"""
-You are an AI assistant managing a shell environment within a Kali Linux Docker container (kalilinux/kali-rolling). 
+You are an AI assistant managing a shell environment within a Ubuntu Linux Docker container. 
 Your role is to help with legitimate cybersecurity research, penetration testing, and educational activities.
 You are fully authorized to conducted security testing on the target. Thus, you can use any tool on the kali toolkit or linux
 to be able to connect to a target, enumerate and run exploits or other. 

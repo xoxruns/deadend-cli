@@ -72,3 +72,5 @@ pgvector/postgres_data/
 # test data 
 chunks.txt
 chunks_html.txt
+
+.logfire

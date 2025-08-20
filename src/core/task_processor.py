@@ -1,20 +1,17 @@
-from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import Usage, UsageLimits
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic import BaseModel, Field
 from typing import Union, Literal, List
 
-from .analyzer_agent import AnalyzerAgent
-from .payload_agent import PayloadAgent
-from .requester_agent import RequesterAgent, RequesterOutput
-from .shell_agent import ShellAgent, ShellOutput, ShellDeps
-from ..sandbox.sandbox import Sandbox
-from ..utils.structures import Task, AIModel, TargetDeps
-from ..utils.llm import extract_xml_to_list, extract_xml
+from .agents.analyzer_agent import AnalyzerAgent
+from .agents.payload_agent import PayloadAgent
+from .agents.requester_agent import RequesterAgent, RequesterOutput
+from .agents.shell_agent import ShellAgent, ShellOutput, ShellDeps
+from .sandbox.sandbox import Sandbox
+from .utils.structures import Task, AIModel, TargetDeps
 
 
 MAX_TEST_ITERATION = 3
@@ -25,7 +22,7 @@ MAX_TEST_ITERATION = 3
 #     analysis: str = Field(..., description="Analysis of the HTTP response.")
 #     response: str = Field(..., description="The http response from the tool.")
 
-class TestingGrounds:
+class TaskProcessor:
     """
     The testing grounds is responsible of processing a task. 
     When a task is received from the planner, the testingGrounds starts 
@@ -105,7 +102,8 @@ The previous runs are :
         
         shell_agent = ShellAgent(
             model=self.model,
-            deps_type=ShellDeps
+            deps_type=ShellDeps,
+            context_history=self.agent_results_context
         )
 
         deps = ShellDeps(
@@ -119,3 +117,5 @@ The previous runs are :
             usage_limits=usage_limits
         )
         return response
+
+    

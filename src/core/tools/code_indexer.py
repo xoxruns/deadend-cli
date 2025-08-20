@@ -1,14 +1,13 @@
 import os
 import re
-
 from typing import List
 from openai import AsyncOpenAI
 from uuid import uuid4
 from pathlib import Path
 
-from src.rag.database import CodeSection
-from src.tools.web_resource_extractor import WebResourceExtractor
-from src.code_indexer.code_splitter import Chunker
+from src.core.rag.database import CodeSection
+from src.core.tools.web_resource_extractor import WebResourceExtractor
+from src.core.code_indexer.code_splitter import Chunker
 
 
 
