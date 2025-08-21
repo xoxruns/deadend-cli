@@ -1,16 +1,48 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+
+class OpenAIConfig(BaseSettings):
+    api_key: str
+    model_name: str = "gpt-4o"
+
+class AnthropicConfig(BaseSettings):
+    api_key: str 
+    model_name: str = "claude-3-5-sonnet-20241022"
+
+class GeminiConfig(BaseSettings):
+    api_key: str
+    model_name: str = "gemini-1.5-pro"
+
+class ModelConfig(BaseSettings):
+    api_key: str
+    model_name: str
+    base_url: str | None = None
+
+class ModelSettings(BaseSettings):
+      # Model provider configs
+      openai: ModelConfig | None = None
+      anthropic: ModelConfig | None = None
+      gemini: ModelConfig | None = None
+
+      # Default model to use
+      default_provider: str = "openai"
 
 
 class Config:
     """
-    Configuration class that loads environment variables from a .env file
-    and provides easy access to them for use with LangChain or other applications.
+    Configuration class that loads environment variables from a .env file or from 
+    environment variables 
     """
+
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
+    openai_model_name : str | None = os.getenv("OPENAI_MODEL") or "o4-mini-2025-04-16"
     anthropic_api_key: str | None = os.getenv("ANTHROPIC_API_KEY")
+    anthropic_model_name : str | None = os.getenv("ANTHROPIC_MODEL")
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
+    gemini_model_name : str | None = os.getenv("GEMINI_MODEL")
 
     @classmethod
     def configure(cls, env_file: str = ".env"):
@@ -54,11 +86,7 @@ class Config:
         
         # Database configurations
         cls.db_url = os.getenv("DB_URL")
-        # cls.db_host = os.getenv("DB_HOST")
-        # cls.db_port = os.getenv("DB_PORT")
-        # cls.db_user = os.getenv("DB_USER")
-        # cls.db_password = os.getenv("DB_PASSWORD")
-        # cls.db_name = os.getenv("DB_NAME")
+
 
         # zap proxy key
         cls.zap_api_key = os.getenv("ZAP_PROXY_API_KEY")
@@ -68,40 +96,26 @@ class Config:
         cls.debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
         cls.log_level = os.getenv("LOG_LEVEL", "INFO")
 
-    # @classmethod
-    # def get(cls, key: str, default: Any = None) -> Any:
-    #     """
-    #     Get an environment variable by key.
-        
-    #     Args:
-    #         key (str): The environment variable key.
-    #         default (Any, optional): Default value if the key doesn't exist.
-            
-    #     Returns:
-    #         Any: The value of the environment variable or the default.
-    #     """
-    #     return os.getenv(key, default)
-    
-    # @classmethod
-    # def get_all(cls) -> Dict[str, str]:
-    #     """
-    #     Get all environment variables as a dictionary.
-        
-    #     Returns:
-    #         Dict[str, str]: Dictionary of all environment variables.
-    #     """
-    #     return dict(os.environ)
-    
     @classmethod
-    def get_database_url(cls) -> str:
-        """
-        Construct a database URL from the database configuration.
+    def get_models_settings(cls) -> ModelSettings:
+        model_settings = ModelSettings()
+
+        if cls.openai_api_key:
+            model_settings.openai = ModelConfig(
+                api_key=cls.openai_api_key,
+                model_name=cls.openai_model_name if cls.openai_model_name else "gpt-4o"
+            )
         
-        Returns:
-            str: Database URL string.
-        """
-        if not all([cls.db_host, cls.db_user, cls.db_password, cls.db_name]):
-            return ""
-        
-        port = f":{cls.db_port}" if cls.db_port else ""
-        return f"postgresql://{cls.db_user}:{cls.db_password}@{cls.db_host}{port}/{cls.db_name}"
+        if cls.anthropic_api_key:
+            model_settings.anthropic = ModelConfig(
+                api_key=cls.anthropic_api_key,
+                model_name=cls.anthropic_model_name if cls.anthropic_model_name else "claude-3-5-sonnet-20241022"
+            )
+
+        if cls.gemini_api_key:
+            model_settings.anthropic = ModelConfig(
+                api_key=cls.gemini_api_key,
+                model_name=cls.gemini_model_name if cls.gemini_model_name else "claude-3-5-sonnet-20241022"
+            )
+            
+        return model_settings

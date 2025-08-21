@@ -8,7 +8,7 @@ from rich import print
 from rich.prompt import Prompt, Confirm
 from pydantic_ai.usage import Usage, UsageLimits
 
-from config import Config
+from core.config.settings import Config
 from cli.chat import ChatInterface
 from core.agents.planner import Planner
 from core.task_processor import TaskProcessor
