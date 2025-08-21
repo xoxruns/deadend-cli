@@ -43,7 +43,9 @@ class ModelRegistry:
     def get_model(self, provider: str = 'openai') -> AIModel:
         if provider not in self._models:
             raise ValueError(f"Model provider {provider} not supported.")
+        elif self._models == {}:
+            raise ValueError("No model was instantiated. Have you tried supplying an API key for the Model?")
         return self._models[provider]
     
-    def list_supported_providers(self) -> list[str]:
+    def list_configured_providers(self) -> list[str]:
         return list(self._models.keys())
