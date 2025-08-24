@@ -1,10 +1,10 @@
 from pydantic import BaseModel
-from pydantic_ai import RunContext, Tool
+from pydantic_ai import RunContext
 from pydantic_ai.usage import Usage, UsageLimits
 from pydantic_ai.models import anthropic, openai
 from typing import Any
 
-from .agent import AgentRunner
+from .factory import AgentRunner
 from ..tools.requester import Requester, parse_http_request
 
 class RequesterOutput(BaseModel):

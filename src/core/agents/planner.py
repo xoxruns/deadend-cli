@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Any
 from pydantic_ai import RunContext
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
@@ -8,9 +8,9 @@ from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
 from dataclasses import dataclass
 
-from ..utils.structures import AIModel, Task
-from ..agents.agent import AgentRunner
-from ..rag.code_indexer_db import AsyncCodeChunkRepository
+from core.utils.structures import AIModel, Task
+from .factory import AgentRunner
+from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.config.settings import Config
 
 

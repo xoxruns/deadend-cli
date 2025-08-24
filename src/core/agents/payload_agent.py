@@ -2,7 +2,7 @@ from pydantic_ai.models import anthropic, openai
 from pydantic_ai.usage import Usage, UsageLimits
 from pydantic_ai import RunContext
 
-from .agent import AgentRunner
+from .factory import AgentRunner
 from ..utils.structures import RequestStruct, TargetDeps
 
 #    payload_agent = Agent(

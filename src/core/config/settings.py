@@ -31,6 +31,7 @@ class Config:
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
     gemini_model_name : str | None = os.getenv("GEMINI_MODEL")
 
+    # Embedding model
     embedding_model: str | None  = os.getenv("EMBEDDING_MODEL")
 
     # Database
@@ -40,8 +41,8 @@ class Config:
     zap_api_key: str | None = os.getenv("ZAP_PROXY_API_KEY")
 
     # Application settings
-    app_env = os.getenv("APP_ENV", "development")
-    log_level = os.getenv("LOG_LEVEL", "INFO")
+    app_env: str = os.getenv("APP_ENV", "development")
+    log_level: str = os.getenv("LOG_LEVEL", "INFO")
 
     @classmethod
     def configure(cls, env_file: str = ".env"):
