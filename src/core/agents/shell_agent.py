@@ -5,8 +5,8 @@ from pydantic_ai.usage import Usage, UsageLimits
 from typing import Any
 from dataclasses import dataclass
 
-from .agent import AgentRunner
-from src.core.sandbox import Sandbox, SandboxStatus
+from .factory import AgentRunner
+from core.sandbox import Sandbox, SandboxStatus
 
 @dataclass
 class ShellDeps:

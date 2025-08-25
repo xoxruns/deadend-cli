@@ -7,8 +7,8 @@ from rich.text import Text
 from rich.box import ROUNDED
 from typing import Dict, List, Callable
 
-from src.agents.requester_agent import RequesterOutput
-from src.utils.structures import Task
+from core.agents.requester_agent import RequesterOutput
+from core.utils.structures import Task
 from .textual_prompt import prompt_with_textual
 
 class ChatInterface:

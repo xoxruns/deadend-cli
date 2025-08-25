@@ -7,6 +7,7 @@ from rich.box import ROUNDED
 from src.cli.cli import app, config
 
 
+
 BANNER = """[bold blue]
 oooooooooo.                             .o8  oooooooooooo                   .o8  
 `888'   `Y8b                           "888  `888'     `8                  "888  
@@ -25,7 +26,6 @@ def main():
     f"[bold]DB URL:[/bold] {config.db_url or '[red]Not set[/red]'}\n"
     f"[bold]ZAP Proxy API Key:[/bold] {'***' if config.zap_api_key else '[red]Not set[/red]'}\n"
     f"[bold]App Env:[/bold] {config.app_env}\n"
-    f"[bold]Debug Mode:[/bold] {config.debug_mode}\n"
     f"[bold]Log Level:[/bold] {config.log_level}",
     title="Configuration",
     border_style="blue",

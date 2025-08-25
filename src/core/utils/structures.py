@@ -4,7 +4,7 @@ from typing import Dict, Literal
 from enum import Enum
 from dataclasses import dataclass
 
-from src.rag.code_indexer_db import AsyncCodeChunkRepository
+from core.rag.code_indexer_db import AsyncCodeChunkRepository
 # class HttpMethod: 
 #     method: Literal["GET", "POST", "HEAD", "OPTIONS", "PUT", "PATCH", "DELETE", "STREAM"]
 

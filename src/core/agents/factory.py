@@ -2,7 +2,7 @@ from pydantic_ai import Agent
 from pydantic_ai.usage import Usage, UsageLimits
 from typing import Any
 
-from core.models import AIModel
+from src.core.models import AIModel
 
 class AgentRunner: 
     """

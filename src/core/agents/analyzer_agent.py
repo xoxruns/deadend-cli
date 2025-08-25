@@ -4,7 +4,7 @@ from pydantic_ai import RunContext
 from typing import Any
 
 from src.prompts import TemplateAgentRenderer
-from .agent import AgentRunner
+from .factory import AgentRunner
 from ..utils.structures import TargetDeps
 
 
