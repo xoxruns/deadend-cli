@@ -9,7 +9,8 @@ from typing import Union, Literal, List
 from .agents.analyzer_agent import AnalyzerAgent
 from .agents.payload_agent import PayloadAgent
 from .agents.requester_agent import RequesterAgent, RequesterOutput
-from .agents.shell_agent import ShellAgent, ShellOutput, ShellDeps
+from .agents.shell_agent import ShellAgent, ShellOutput
+from .tools.shell import ShellDeps
 from .sandbox.sandbox import Sandbox
 from .utils.structures import Task, AIModel, TargetDeps
 

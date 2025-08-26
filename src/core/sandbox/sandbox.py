@@ -17,7 +17,6 @@ class Sandbox(BaseModel):
     The Sandbox object interacts with docker API to create the gVisor sandbox
     the runtime specified is the runsc gvisor  
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
     container_id : str | None = None
     docker_image: str = ""
     docker_volume: str = ""
@@ -61,8 +60,6 @@ class Sandbox(BaseModel):
             self.status = SandboxStatus.ERROR
             raise e
         
-
-
     def execute_command(self, command: str, stream: bool = True):
         if not self.container_id:
             raise ValueError("Container not started")
@@ -91,13 +88,16 @@ class Sandbox(BaseModel):
                 command_result = container.exec_run(
                     cmd=command,
                     detach=False,
-                    tty=True
+                    tty=True,
+                    demux=True
                 )
+                (stdout, stderr) = command_result.output
                 return {
                     "command": command,
                     "exit_code": command_result.exit_code,
                     "streaming": False, 
-                    "output": command_result.output.decode('utf-8') if command_result.output else "",
+                    "stdout": stdout.decode('utf-8') if stdout else "",
+                    "stderr": stderr.decode('utf-8') if stderr else "",
                     "timed_out": False,
                 }
             

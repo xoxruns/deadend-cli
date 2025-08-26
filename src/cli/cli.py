@@ -8,8 +8,10 @@ from rich import print
 from rich.prompt import Prompt, Confirm
 from pydantic_ai.usage import Usage, UsageLimits
 
-from core import Config
+from core import Config, config_setup, init_rag_database
+from core.models import ModelRegistry
 from cli.chat import ChatInterface
+from cli.banner import print_banner
 from core.agents.planner import Planner
 from core.task_processor import TaskProcessor
 from core.tools.code_indexer import SourceCodeIndexer
@@ -18,16 +20,13 @@ from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.sandbox.sandbox_manager import SandboxManager
 
 app = typer.Typer(help="Deadend CLI - interact with the Deadend framework.")
-# console = Console()
-
-# Configuration 
-config = Config()
-config.configure()
-
+# # Configuration 
+# config = Config()
+# config.configure()
+# config.get_models_settings()
 
 # Sandbox Manager
 sandbox_manager = SandboxManager()
-
 
 @app.command()
 def version():
@@ -35,48 +34,31 @@ def version():
     print("[bold green]Deadend CLI[/bold green] version 0.1.0")
 
 
-def get_ctrl_key():
-    """Wait for a Ctrl+Letter keypress and return the letter (lowercase)."""
-    while True:
-        key = readchar.readkey()
-        if key == readchar.key.CTRL_Q:
-            return 'q'
-        elif key == readchar.key.CTRL_R:
-            return 'r'
-        elif key == readchar.key.CTRL_H:
-            return 'h'
-        elif key == readchar.key.CTRL_K:
-            return 'i'
-
 @app.command()
 def chat(
     prompt: str = typer.Option(None, help="Send a prompt directly to chat mode."),
     target: str = typer.Option(None, help="Target URL or identifier for chat."),
     openapi_spec: str = typer.Option(None, help="Path to the OpenAPI specification file.")
 ):
-    asyncio.run(chat_interface(prompt, target, openapi_spec))
+    # Configuration setup 
+    config = config_setup()
+    print_banner(config=config)
+    asyncio.run(chat_interface(config, prompt, target, openapi_spec))
 
 
-async def chat_interface(prompt, target, openapi_spec):
-    # LLM model
-    model = AIModel(
-        model_name=config.model_name or "o4-mini-2025-04-16", api_key=config.openai_api_key or ""
-    )
+async def chat_interface(config: Config, prompt: str, target: str, openapi_spec, llm_provider: str = "openai"):
+    model_registry = ModelRegistry(config=config)
+    model = model_registry.get_model(provider=llm_provider)
 
-    # Embedding model
-    # embedding_model = AIModel(
-    #     model_name=config.embedding_model or "text-embedding-3-small", api_key=config.openai_api_key or ""
-    # )
     sandbox_id = sandbox_manager.create_sandbox()
-    
 
     # Monitoring 
-
     logfire.configure()
     logfire.instrument_pydantic_ai()
+    
     # Initializing the codeIndexer and the vector database
-    rag_db = AsyncCodeChunkRepository(config.db_url or "" )
-    await rag_db.initialize_database()
+    rag_db = await init_rag_database(config.db_url)
+
     target_text = f"\nThe target host url is : {target}"
     chat_interface = ChatInterface()
     chat_interface.startup()

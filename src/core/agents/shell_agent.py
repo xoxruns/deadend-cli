@@ -7,15 +7,12 @@ from dataclasses import dataclass
 
 from .factory import AgentRunner
 from core.sandbox import Sandbox, SandboxStatus
+from core.tools.shell import sandboxed_shell_tool, CmdLog
 
-@dataclass
-class ShellDeps:
-    sandbox: Sandbox
 
 class ShellOutput(BaseModel):
-    stdin: str
     analysis: str
-    stdout: str
+    cmdlogs: list[CmdLog]
 
 
 class ShellAgent(AgentRunner):
@@ -28,7 +25,6 @@ class ShellAgent(AgentRunner):
             self, 
             model: openai.OpenAIModel,
             deps_type: Any | None, 
-            tools: list = [],
             context_history: str = "",
     ):
         self.instructions = self._shell_agent_instructions(context_agent=context_history)
@@ -39,15 +35,10 @@ class ShellAgent(AgentRunner):
             instructions=self.instructions, 
             deps_type=deps_type, 
             output_type=ShellOutput, 
-            tools=tools
+            tools=[sandboxed_shell_tool]
         )
         
 
-        @self.agent.tool
-        def run_command(ctx: RunContext[ShellDeps], command: str) -> str:
-            if ctx.deps.sandbox.status == SandboxStatus.RUNNING:
-                return_command = ctx.deps.sandbox.execute_command(command=command, stream=False)
-            return return_command
 
 
     async def run(self, user_prompt, deps, message_history, usage: Usage, usage_limits:UsageLimits):

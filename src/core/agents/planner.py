@@ -1,7 +1,6 @@
 from typing import List, Any
+from pydantic import BaseModel
 from pydantic_ai import RunContext
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import Usage, UsageLimits
@@ -12,7 +11,7 @@ from core.utils.structures import AIModel, Task
 from .factory import AgentRunner
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.config.settings import Config
-
+from core.models import AIModel
 
 @dataclass
 class RagDeps:
@@ -20,27 +19,28 @@ class RagDeps:
     rag: AsyncCodeChunkRepository
     target: str
 
+class PlannerOutput(BaseModel):
+    tasks: List[Task]
+
+
 class PlannerAgent(AgentRunner):
     """The planner agent """
     
     def __init__(
             self, 
-            model: AnthropicModel | OpenAIModel, 
+            model: AIModel, 
             output_type: Any | None, 
             tools: list
         ):
         self.instructions = self._planner_agent_instructions()
 
-
         super().__init__(
             model,  
-            system_prompt=None,
             instructions=self.instructions, 
             deps_type=None, 
             output_type=output_type, 
             tools=tools
         )
-
 
         @self.agent.tool
         async def retrieve_webpage_db(context: RunContext[RagDeps], search_query: str) -> str :
@@ -115,9 +115,8 @@ class Planner:
         self.crawling_data = crawling_data
         self.tasks = List[Task]
 
-        model_openai = OpenAIModel(model_name=model.model_name, provider=OpenAIProvider(api_key=model.api_key))
         self.agent = PlannerAgent(
-            model=model_openai, 
+            model=model, 
             output_type=List[Task],
             tools=[]
         )

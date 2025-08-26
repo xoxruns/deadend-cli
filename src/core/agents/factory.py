@@ -14,7 +14,6 @@ class AgentRunner:
     def __init__(
         self, 
         model: AIModel, 
-        system_prompt: str | None, 
         instructions: str | None, 
         deps_type: Any | None, 
         output_type: Any | None,
@@ -22,7 +21,6 @@ class AgentRunner:
     ):
         self.agent = Agent(
             model=model,
-            system_prompt=system_prompt,
             instructions=instructions,
             deps_type=deps_type, 
             output_type=output_type, 

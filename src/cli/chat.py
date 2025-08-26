@@ -3,7 +3,6 @@ import asyncio
 from rich.console import Console
 from rich.layout import Layout
 from rich.panel import Panel
-from rich.text import Text
 from rich.box import ROUNDED
 from typing import Dict, List, Callable
 
@@ -15,19 +14,14 @@ class ChatInterface:
     def __init__(self, max_history: int = 50):
         self.console = Console()
         self.max_history = max_history
-
         self.conversation: List[Dict] = []
         self.total_tokens = 0
-        # self.session 
         self.layout = Layout()
         self.layout.split_column(
             Layout(name="header", size=4),
             Layout(name="main", ratio=1),
             Layout(name="footer", size=3)
         )
-
-    def add_message(self, role: str, content: str, tokens: int = 0):
-        pass
 
     async def wait_response(self, func: Callable, status: str, *args, **kwargs):
         """Awaits response"""
@@ -55,9 +49,6 @@ class ChatInterface:
     def print_chat_response(self, message: str, agent_name: str):
         # Panel(message, title=f"{agent_name}", border_style="magenta", box=ROUNDED)
         self.console.print(f"{agent_name}: {message}")
-
-    # def print_chat_response(response: str):
-    #     print(Panel(response, title="Chat Response", border_style="magenta", box=ROUNDED))
 
     def print_requester_response(self, output: List[RequesterOutput], title: str):
         message = ""
