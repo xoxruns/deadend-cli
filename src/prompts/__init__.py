@@ -1,3 +1,3 @@
-from .template_renderer import TemplateAgentRenderer
+from .template_renderer import TemplateAgentRenderer, render_agent_instructions
 
-__all__ = [ TemplateAgentRenderer ]
+__all__ = [ render_agent_instructions ]

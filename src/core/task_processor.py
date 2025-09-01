@@ -17,11 +17,6 @@ from .utils.structures import Task, AIModel, TargetDeps
 
 MAX_TEST_ITERATION = 3
 
-# class PayloadResponse(BaseModel):
-#     state: Literal["achieved", "failed"] = Field(..., 
-#         description="State represents the decision from the analysis if it achieves the task.")
-#     analysis: str = Field(..., description="Analysis of the HTTP response.")
-#     response: str = Field(..., description="The http response from the tool.")
 
 class TaskProcessor:
     """

@@ -1,4 +1,5 @@
 from core import Config
+from core.sandbox import SandboxManager
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 
 def config_setup() -> Config:
@@ -16,8 +17,10 @@ async def init_rag_database(database_url: str) -> AsyncCodeChunkRepository:
     await rag_database.initialize_database()
     return rag_database
 
-def sandbox_setup():
-    pass
+def sandbox_setup() -> SandboxManager:
+    # Sandbox Manager
+    sandbox_manager = SandboxManager()
+    return sandbox_manager
 
 def start_agent_workflow():
     pass
