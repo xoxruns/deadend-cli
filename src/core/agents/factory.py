@@ -39,7 +39,6 @@ class AgentRunner:
             usage_limits=usage_limits
         )
 
-
     def get_response(self):
         if self.response != None:
             return self.response

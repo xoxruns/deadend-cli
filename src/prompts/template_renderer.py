@@ -15,8 +15,8 @@ class TemplateAgentRenderer:
         return NotImplementedError
     
 
-def render_agent_instructions(agent_name: str, tools: Dict[str, str]):
+def render_agent_instructions(agent_name: str, tools: Dict[str, str], **kwargs):
         env =  Environment(loader=PackageLoader("./"))
         template_renderer = TemplateAgentRenderer(jinja_env=env, agent_name=agent_name, tools=tools)
 
-        return template_renderer.get_instructions()
+        return template_renderer.get_instructions(kwargs)

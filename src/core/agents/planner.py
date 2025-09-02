@@ -12,6 +12,7 @@ from .factory import AgentRunner
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.config.settings import Config
 from core.models import AIModel
+from src.prompts import render_agent_instructions
 
 @dataclass
 class RagDeps:
