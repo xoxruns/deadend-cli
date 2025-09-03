@@ -28,6 +28,7 @@ class AnalyzerAgent(AgentRunner):
     ):   
         self.instructions = self._analyzer_agent_instructions()
         super().__init__(
+            name="analyzer_agent", 
             model=model,
             system_prompt=None,
             instructions=self.instructions,

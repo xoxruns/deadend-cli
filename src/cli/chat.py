@@ -164,7 +164,7 @@ async def chat_interface(config: Config, sandbox_manager: SandboxManager, prompt
             chat_interface.console.print("Sync completed.", end="\r")
 
         # The planner here can query the vector database
-        planner = Planner(model=model, target=target, api_spec=openapi_spec, crawling_data=crawling_data, config=config)
+        planner = Planner(model=model, target=target, api_spec=openapi_spec)
 
         usage = Usage()
         usage_limits = UsageLimits()

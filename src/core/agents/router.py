@@ -6,7 +6,7 @@ from .factory import AgentRunner
 
 class RouterOutput(BaseModel):
     reasoning: str
-    next_agent: AgentRunner
+    next_agent_name: str
 
 class RouterAgent(AgentRunner):
     """
@@ -20,8 +20,12 @@ class RouterAgent(AgentRunner):
             available_agents_length=len(available_agents), 
             available_agents=available_agents
             )
-        super().__init__(model, instructions=router_instructions, deps_type=deps_type, output_type=RouterResponse, tools=[])
+        self._set_description()
+        super().__init__(name="router", model=model, instructions=router_instructions, deps_type=deps_type, output_type=RouterOutput, tools=[])
 
 
     async def run(self, prompt, deps, message_history, usage, usage_limits):
         return await super().run(user_prompt=prompt, deps=deps, message_history=message_history, usage=usage, usage_limits=usage_limits)
+
+    def _set_description(self):
+        self.description = "The router agent role is to chose the appropriate agent depending on which one is the best to use."

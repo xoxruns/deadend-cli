@@ -2,24 +2,25 @@ import socket
 from asgiref.sync import sync_to_async
 import httptools
 import ssl
+from pydantic_ai import RunContext
 
 from .zap_connector import ZapConnector 
 from ..utils.structures import *
 
 
 
-class Requester(ZapConnector):
-    def __init__(self, api_key, verify_ssl, proxy_url='http://localhost:8080'):
+class Requester:
+    def __init__(self, verify_ssl, proxy_url='http://localhost:8080'):
         # Zap connection
-        super().__init__(api_key, proxy_url)
-        super().set_default_config()
+        # super().__init__(api_key, proxy_url)
+        # super().set_default_config()
         self.ssl_context = verify_ssl
     
 
-    async def open_url(self, url):
-        self.url = url
-        response = await self._zap_open_url(url=self.url)
-        return response
+    # async def open_url(self, url):
+    #     self.url = url
+    #     response = await self._zap_open_url(url=self.url)
+    #     return response
     
 
     @sync_to_async
@@ -125,4 +126,20 @@ def send_raw_request(host, port, target_host, request):
         response = f"Request not send. Please retry. The error is : {err}".format(err)
     sso.close()
     s.close()
+    return response
+
+def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:
+    bytes_request=raw_request.encode('utf-8')
+    parsed_data = parse_http_request(bytes_request)
+
+    if parsed_data != None:
+        return True
+    else: 
+        return False
+            
+async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str) -> str | bytes:
+    requester = Requester(verify_ssl=False)
+    
+    # localhost:8080 is the proxy
+    response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
     return response

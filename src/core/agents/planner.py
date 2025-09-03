@@ -36,7 +36,8 @@ class PlannerAgent(AgentRunner):
         self.instructions = self._planner_agent_instructions()
 
         super().__init__(
-            model,  
+            name="planner_agent", 
+            model=model,  
             instructions=self.instructions, 
             deps_type=None, 
             output_type=output_type, 
@@ -110,15 +111,14 @@ class Planner:
     The response is analyzed by an LLM call, and add the final result to the task. 
     It then call the testing grounds for the following task testing and so on. 
     """
-    def __init__(self, model: AIModel, target: str, api_spec: str, crawling_data: str, config: Config):
+    def __init__(self, model: AIModel, target: str, api_spec: str):
         self.target = target
         self.api_spec = api_spec
-        self.crawling_data = crawling_data
         self.tasks = List[Task]
 
         self.agent = PlannerAgent(
             model=model, 
-            output_type=List[Task],
+            output_type=PlannerOutput,
             tools=[]
         )
 

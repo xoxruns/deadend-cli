@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pydantic_ai import RunContext
+from pydantic_ai import RunContext, Tool
 from pydantic_ai.models import openai
 from pydantic_ai.usage import Usage, UsageLimits
 from typing import Any
@@ -25,17 +25,17 @@ class ShellAgent(AgentRunner):
             self, 
             model: openai.OpenAIModel,
             deps_type: Any | None, 
-            context_history: str = "",
     ):
         self.instructions = self._shell_agent_instructions(context_agent=context_history)
 
         super().__init__(
+            name="shell_agent", 
             model=model, 
             system_prompt=None, 
             instructions=self.instructions, 
             deps_type=deps_type, 
             output_type=ShellOutput, 
-            tools=[sandboxed_shell_tool]
+            tools=[Tool(sandboxed_shell_tool)]
         )
         
 
@@ -50,13 +50,13 @@ class ShellAgent(AgentRunner):
         raise NotImplementedError
     
     def _shell_agent_instructions(self, **kwargs):
-        context_agent = ""
-        for key, value in kwargs.items():
-            if key=='context_history':
-                context_agent=f"""
-Since the start, here is the results of the running agents: 
-{value}
-"""
+#         context_agent = ""
+#         for key, value in kwargs.items():
+#             if key=='context_history':
+#                 context_agent=f"""
+# Since the start, here is the results of the running agents: 
+# {value}
+# """
         return f"""
 You are an AI assistant managing a shell environment within a Ubuntu Linux Docker container. 
 Your role is to help with legitimate cybersecurity research, penetration testing, and educational activities.

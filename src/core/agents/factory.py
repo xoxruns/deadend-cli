@@ -13,12 +13,14 @@ class AgentRunner:
     
     def __init__(
         self, 
+        name: str, 
         model: AIModel, 
         instructions: str | None, 
         deps_type: Any | None, 
         output_type: Any | None,
         tools: list,
     ):
+        self.name = name
         self.agent = Agent(
             model=model,
             instructions=instructions,

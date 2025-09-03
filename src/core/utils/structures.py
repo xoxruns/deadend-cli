@@ -37,7 +37,6 @@ class RequestStruct:
 #     reason: str
 
 class Task(BaseModel):
-    id: int
     goal: str
     status: Literal['pending', 'failed', 'success']
     output: str

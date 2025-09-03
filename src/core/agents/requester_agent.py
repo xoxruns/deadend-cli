@@ -1,11 +1,13 @@
 from pydantic import BaseModel
-from pydantic_ai import RunContext
+from pydantic_ai import RunContext, Tool
 from pydantic_ai.usage import Usage, UsageLimits
 from pydantic_ai.models import anthropic, openai
 from typing import Any
 
+
 from .factory import AgentRunner
-from ..tools.requester import Requester, parse_http_request
+from core.models import AIModel
+from core.tools.requester import is_valid_request, send_payload
 
 class RequesterOutput(BaseModel):
     reasoning: str
@@ -21,39 +23,38 @@ class RequesterAgent(AgentRunner):
 
     def __init__(
         self, 
-        model: anthropic.AnthropicModel | openai.OpenAIModel, 
+        model: AIModel, 
         deps_type: Any | None, 
-        target_information: str,
-        zap_api_key: str,
-        tools: list = [],
+        target_information: str
     ):
         self.instructions = self._requester_agent_instructions(target_information=target_information)
         super().__init__(
+            name="requester_agent",
             model=model, 
             system_prompt=None, 
             instructions=self.instructions,
             deps_type=deps_type, 
             output_type=RequesterOutput, 
-            tools=tools
+            tools=[Tool(is_valid_request), Tool(send_payload)]
         )
 
-        @self.agent.tool
-        def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:
-            bytes_request=raw_request.encode('utf-8')
-            parsed_data = parse_http_request(bytes_request)
+        # @self.agent.tool
+        # def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:
+        #     bytes_request=raw_request.encode('utf-8')
+        #     parsed_data = parse_http_request(bytes_request)
 
-            if parsed_data != None:
-                return True
-            else: 
-                return False
+        #     if parsed_data != None:
+        #         return True
+        #     else: 
+        #         return False
             
-        @self.agent.tool
-        async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str) -> str | bytes:
-            requester = Requester(api_key=zap_api_key, verify_ssl=False)
+        # @self.agent.tool
+        # async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str) -> str | bytes:
+        #     requester = Requester(verify_ssl=False)
             
-            # localhost:8080 is the proxy
-            response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
-            return response
+        #     # localhost:8080s is the proxy
+        #     response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
+        #     return response
 
 
     def reset_agent(self):

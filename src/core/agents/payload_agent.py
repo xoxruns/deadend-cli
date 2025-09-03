@@ -31,6 +31,7 @@ class PayloadAgent(AgentRunner):
         self.instructions = self._payload_agent_instructions(analyzer_results=analyzer_results)
 
         super().__init__(
+            name="payload_agent",
             model=model, 
             deps_type=TargetDeps, 
             output_type=str, 
