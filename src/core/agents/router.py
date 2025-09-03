@@ -24,8 +24,8 @@ class RouterAgent(AgentRunner):
         super().__init__(name="router", model=model, instructions=router_instructions, deps_type=deps_type, output_type=RouterOutput, tools=[])
 
 
-    async def run(self, prompt, deps, message_history, usage, usage_limits):
-        return await super().run(user_prompt=prompt, deps=deps, message_history=message_history, usage=usage, usage_limits=usage_limits)
+    async def run(self, user_prompt, deps, message_history, usage, usage_limits):
+        return await super().run(user_prompt=user_prompt, deps=deps, message_history=message_history, usage=usage, usage_limits=usage_limits)
 
     def _set_description(self):
         self.description = "The router agent role is to chose the appropriate agent depending on which one is the best to use."

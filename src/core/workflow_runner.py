@@ -99,5 +99,12 @@ class WorflowRunner:
                     available_agents=self.available_agents
                 )
     
-    async def start_agent(self, agent_name: str):
+    async def run_agent(self, agent_name: str, prompt: str):
         agent = self._get_agent(agent_name=agent_name)
+        usage_agent = Usage()
+        usage_limits_agent = UsageLimits()
+        resp = await agent.run(user_prompt=prompt, deps=None, 
+                    message_history=self.context.get_all_context(),
+                    usage=usage_agent,
+                    usage_limits=usage_limits_agent
+            )
