@@ -1,7 +1,7 @@
 import asyncio
 
 
-from src.cli.cli import app
+from src.cli import app
 
 def main():
     asyncio.run(app())

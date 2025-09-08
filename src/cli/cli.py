@@ -1,6 +1,7 @@
 import asyncio
 import typer
 from typing import List
+from rich.console import Console
 
 from core import config_setup, sandbox_setup
 from cli.chat import chat_interface
@@ -8,6 +9,9 @@ from cli.banner import print_banner
 from core.sandbox.sandbox_manager import SandboxManager
 
 app = typer.Typer(help="Deadend CLI - interact with the Deadend framework.")
+
+console = Console()
+
 
 @app.command()
 def version():

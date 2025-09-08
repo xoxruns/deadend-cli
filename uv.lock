@@ -408,6 +408,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "jsbeautifier" },
     { name = "logfire" },
+    { name = "logging" },
     { name = "lxml" },
     { name = "nest-asyncio" },
     { name = "numpy" },
@@ -466,6 +467,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "jsbeautifier", specifier = ">=1.15.4" },
     { name = "logfire", specifier = ">=4.3.3" },
+    { name = "logging", specifier = ">=0.4.9.6" },
     { name = "lxml", specifier = ">=6.0.0" },
     { name = "nest-asyncio", specifier = ">=1.6.0" },
     { name = "numpy", specifier = ">=2.3.1" },
@@ -1069,6 +1071,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/86/d5/1fde2adc24a2535fa
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ee/a4/8200b279a44990ad9d4233f05c2bc4029ba02f25de51fee61f51bc5c5a98/logfire_api-3.16.1-py3-none-any.whl", hash = "sha256:da0d232fffadded58339b91a5a1b5f45c4bd05a62e9241c973de9c5bebe34521", size = 80121, upload-time = "2025-05-26T12:08:46.108Z" },
 ]
+
+[[package]]
+name = "logging"
+version = "0.4.9.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/4b/979db9e44be09f71e85c9c8cfc42f258adfb7d93ce01deed2788b2948919/logging-0.4.9.6.tar.gz", hash = "sha256:26f6b50773f085042d301085bd1bf5d9f3735704db9f37c1ce6d8b85c38f2417", size = 96029, upload-time = "2013-06-04T23:43:22.086Z" }
 
 [[package]]
 name = "lxml"
