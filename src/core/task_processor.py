@@ -1,10 +1,8 @@
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import Usage, UsageLimits
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from typing import Union, Literal, List
+from typing import Union, List
 
 from .agents.analyzer_agent import AnalyzerAgent
 from .agents.payload_agent import PayloadAgent

@@ -6,7 +6,6 @@ from typing import Any
 from dataclasses import dataclass
 
 from .factory import AgentRunner
-from core.sandbox import Sandbox, SandboxStatus
 from core.tools.shell import sandboxed_shell_tool, CmdLog
 
 

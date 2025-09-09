@@ -20,14 +20,14 @@ class ContextEngine:
     def set_tasks(self, tasks: List[Task]) -> None:
         self.workflow_context += f"""\n
 Planner agent new tasks :
-{str(tasks)}        
+{str(tasks)}\n
 """
         self.tasks = Dict(enumerate(task for task in tasks))
 
     def set_target(self, target: str) -> None: 
         self.workflow_context += f"""\n
 The new target is : 
-{target}        
+{target}\n 
 """
         self.target = target
 
@@ -42,6 +42,11 @@ Router agent :
 """
     def add_not_found_agent(self, agent_name: str):
         self.workflow_context += f"""\n
-Not found agent name : {agent_name}
+Not found agent name : {agent_name}\n
+"""
+    def add_agent_response(self, response: str): 
+        self.workflow_context += f"""\n
+Agent response is :\n
+{response}\n
 """
         

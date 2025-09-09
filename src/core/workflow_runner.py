@@ -10,12 +10,15 @@ from core.context.context_engine import ContextEngine
 from core.agents import *
 
 
+MAX_ITERATION = 10
+
 class WorflowRunner:
     config: Config
     model: AIModel
     code_indexer_db: AsyncCodeChunkRepository
     sandbox: Sandbox
     context: ContextEngine = ContextEngine()
+    goal_achieved: bool = False
     
     def __init__(
             self, 
@@ -115,15 +118,37 @@ class WorflowRunner:
                     usage=usage_agent,
                     usage_limits=usage_limits_agent
             )
+        agent_response = resp.output
+        self.context.add_agent_response(agent_response)
+        return agent_response
     
     async def start_workflow(self, prompt:str, target: str):
         
         # Plan the tasks (raise tasks error if empty task and rerun 2 more times if still empty)
         tasks = await self.plan_tasks(goal=prompt, target=target)
         console.print(tasks)
-        # get each task, route an agent and start the agent
-        agent_result = await self.route_task(prompt=prompt)
-        console.print(agent_result)
 
-        # add everything needed to the context 
+        judge_agent = JudgeAgent(self.model, None, [])
+        usage_judge = Usage()
+        usage_limits_judge = UsageLimits()
         
+        i = 0
+        while not self.goal_achieved and i<MAX_ITERATION: 
+            # get each task, route an agent and start the agent
+            agent_router = await self.route_task(prompt=prompt)
+            console.print(str(agent_router))
+            
+            # Run agent 
+            agent_response = await self.run_agent(self.context.next_agent, prompt)
+            console.print(agent_response)
+
+            i += 1
+            judge_output = await judge_agent.run(self.context.get_all_context(), None, usage_judge, usage_limits_judge)
+            str_judge = str(judge_output)
+            self.context.add_agent_response(str_judge)
+            console.print(str_judge)
+            if judge_output.goal_achieved:
+                self.goal_achieved = True
+
+        console.print("END")
+        return judge_output

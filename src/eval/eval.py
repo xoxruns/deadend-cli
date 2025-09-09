@@ -2,6 +2,8 @@ import json
 
 from pydantic import BaseModel, Field
 from pydantic_evals.evaluators import Evaluator
+
+from cli import console
 from core.models import AIModel
 from core import Config
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
@@ -79,14 +81,17 @@ async def eval_agent(
 
     # case if not guided, i.e. not using subtasks 
     if not eval_metadata.guided:
-        tasks = await workflow_agent.plan_tasks(prompt, eval_metadata.target_host)
-
-        # TODO: print tasks here 
+        judge_output = await workflow_agent.start_workflow(prompt, eval_metadata.target_host)
+        console.print(str(judge_output))
+    else: 
+        for subtask in eval_metadata.subtasks: 
+            subtask_prompt = f"{subtask.subtask}\n{subtask.question}\n{subtask.hints}"
+            judge_output = await workflow_agent.start_workflow(subtask_prompt, target=eval_metadata.target_host)
+            console.print(str(judge_output))
 
 
 
     
-
 async def eval_all_models(models: list[AIModel], evaluators: list[Evaluator], agent: WorflowRunner, eval_metadata_path: str, output_report: str):
     """
     Eval function all models
