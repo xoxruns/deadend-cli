@@ -1,12 +1,11 @@
 from core import Config
+from core.models import ModelRegistry
 from core.sandbox import SandboxManager
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 
 def config_setup() -> Config:
     config = Config()
     config.configure()
-    config.get_models_settings()
-
     return config
 
 async def init_rag_database(database_url: str) -> AsyncCodeChunkRepository:
@@ -22,5 +21,6 @@ def sandbox_setup() -> SandboxManager:
     sandbox_manager = SandboxManager()
     return sandbox_manager
 
-def start_agent_workflow():
-    pass
+def setup_model_registry(config: Config) -> ModelRegistry:
+    model_registry = ModelRegistry(config=config)
+    

@@ -1,16 +1,14 @@
 import asyncio
 import typer
 from typing import List
-from rich.console import Console
 
 from core import config_setup, sandbox_setup
 from cli.chat import chat_interface
+from cli.eval import eval_interface
 from cli.banner import print_banner
 from core.sandbox.sandbox_manager import SandboxManager
 
 app = typer.Typer(help="Deadend CLI - interact with the Deadend framework.")
-
-console = Console()
 
 
 @app.command()
@@ -24,7 +22,7 @@ def chat(
     prompt: str = typer.Option(None, help="Send a prompt directly to chat mode."),
     target: str = typer.Option(None, help="Target URL or identifier for chat."),
     openapi_spec: str = typer.Option(None, help="Path to the OpenAPI specification file.")
-):
+    ):
     # Init configuration
     config = config_setup()
     sandbox_manager = sandbox_setup()
@@ -35,16 +33,12 @@ def chat(
 @app.command()
 def eval(
     eval_metadata_file: str = typer.Option(None, help="Dataset file containing all the information about the challenges to run"),
-    providers: List[str] = typer.Option('openai', "Specify the eval providers")
-    
-):  
+    llm_providers: List[str] = typer.Option(['openai'], help="Specify the eval providers")
+    ):  
     # Init configurations 
     config = config_setup()
-    sandbox_manager = sandbox_setup()
-    
-
-
-    
+    # start eval 
+    asyncio.run(eval_interface(config=config, eval_metadata_file=eval_metadata_file, providers=llm_providers))
 
 
 

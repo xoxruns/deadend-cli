@@ -7,7 +7,14 @@ from core.sandbox import Sandbox
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.tools.code_indexer import SourceCodeIndexer
 from core.context.context_engine import ContextEngine
-from core.agents import *
+from core.agents import (
+    AgentRunner, 
+    Planner, PlannerAgent, PlannerOutput,
+    ShellAgent, ShellOutput,
+    RequesterAgent, RequesterOutput, 
+    RouterAgent,RouterOutput, 
+    JudgeAgent, JudgeOutput
+)
 
 
 MAX_ITERATION = 10
@@ -146,9 +153,9 @@ class WorflowRunner:
             judge_output = await judge_agent.run(self.context.get_all_context(), None, usage_judge, usage_limits_judge)
             str_judge = str(judge_output)
             self.context.add_agent_response(str_judge)
-            console.print(str_judge)
             if judge_output.goal_achieved:
                 self.goal_achieved = True
-
+        
+        console.print(str_judge)
         console.print("END")
         return judge_output

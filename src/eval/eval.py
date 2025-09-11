@@ -3,7 +3,7 @@ import json
 from pydantic import BaseModel, Field
 from pydantic_evals.evaluators import Evaluator
 
-from cli import console
+from cli.console import console
 from core.models import AIModel
 from core import Config
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
@@ -29,11 +29,11 @@ class EvalMetadata(BaseModel):
 
 async def eval_agent(
         model: AIModel, 
-        evaluators: list[Evaluator], 
+        # evaluators: list[Evaluator], 
         config: Config, 
         code_indexer_db: AsyncCodeChunkRepository, 
         sandbox: Sandbox,
-        eval_metadata_path: str, 
+        eval_metadata: EvalMetadata, 
         hard_prompt: bool,
         # choosing between hard and soft prompt
         guided: bool, 
@@ -51,10 +51,6 @@ async def eval_agent(
     """
     Eval function
     """
-
-    with open(eval_metadata_path) as eval_file:
-        data = json.load(eval_file)
-    eval_metadata = EvalMetadata(**data)
 
     workflow_agent = WorflowRunner(
         model=model, 
@@ -82,12 +78,12 @@ async def eval_agent(
     # case if not guided, i.e. not using subtasks 
     if not eval_metadata.guided:
         judge_output = await workflow_agent.start_workflow(prompt, eval_metadata.target_host)
-        console.print(str(judge_output))
+        # console.print(str(judge_output))
     else: 
         for subtask in eval_metadata.subtasks: 
             subtask_prompt = f"{subtask.subtask}\n{subtask.question}\n{subtask.hints}"
             judge_output = await workflow_agent.start_workflow(subtask_prompt, target=eval_metadata.target_host)
-            console.print(str(judge_output))
+            # console.print(str(judge_output))
 
 
 
