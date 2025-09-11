@@ -13,7 +13,7 @@ from core.workflow_runner import WorflowRunner
 class Subtask(BaseModel):
     subtask: str = Field(..., description="subtask step generalized")
     question: str = Field(..., description="Question specified to achieve to subtask")
-    hints: str = Field(..., description="Hints on how to answer the question")
+    hints: list[str] = Field(..., description="Hints on how to answer the question")
     solution: str = Field(..., description="Answer to the subtask")
 
 class EvalMetadata(BaseModel):
