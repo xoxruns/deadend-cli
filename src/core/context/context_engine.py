@@ -4,7 +4,7 @@ from core.utils.structures import Task
 from core.agents import RouterOutput
 
 class ContextEngine:
-    workflow_context: str
+    workflow_context: str = ""
     # Defines the whole context from the start of the workflow 
     tasks: Dict[int, Task] 
     # Defines the new last tasks set 
@@ -20,14 +20,14 @@ class ContextEngine:
     def set_tasks(self, tasks: List[Task]) -> None:
         self.workflow_context += f"""\n
 Planner agent new tasks :
-{str(tasks)}\n
+{str(tasks)}
 """
-        self.tasks = Dict(enumerate(task for task in tasks))
+        self.tasks = dict(enumerate(task for task in tasks))
 
     def set_target(self, target: str) -> None: 
         self.workflow_context += f"""\n
 The new target is : 
-{target}\n 
+{target}
 """
         self.target = target
 
@@ -47,6 +47,7 @@ Not found agent name : {agent_name}\n
     def add_agent_response(self, response: str): 
         self.workflow_context += f"""\n
 Agent response is :\n
-{response}\n
+{response}
 """
+
         

@@ -121,11 +121,12 @@ def send_raw_request(host, port, target_host, request):
         sso = context.wrap_socket(s, server_hostname=target_host)
         sso.send(request)
         response = sso.recv(4096)
+        sso.close()
+        s.close()
     except socket.error as err: 
         print(f"An error has occured when sending request. :{err}".format(err))
         response = f"Request not send. Please retry. The error is : {err}".format(err)
-    sso.close()
-    s.close()
+
     return response
 
 def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:

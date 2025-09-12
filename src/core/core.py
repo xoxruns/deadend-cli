@@ -23,4 +23,5 @@ def sandbox_setup() -> SandboxManager:
 
 def setup_model_registry(config: Config) -> ModelRegistry:
     model_registry = ModelRegistry(config=config)
+    return model_registry
     

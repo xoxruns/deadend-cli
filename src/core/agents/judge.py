@@ -15,10 +15,11 @@ class JudgeAgent(AgentRunner):
     Judge Agent 
     """
     def __init__(self, model, deps_type, tools):
-        judge_instructions = render_agent_instructions(
-            "judge", 
-            tools=tools, 
-            )
+        if len(tools) == 0:
+            judge_instructions = render_agent_instructions(
+                "judge", 
+                tools={}, 
+                )
         self._set_description()
         super().__init__(name="judge", model=model, instructions=judge_instructions, deps_type=deps_type, output_type=JudgeOutput, tools=[])
 

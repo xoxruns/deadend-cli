@@ -3,7 +3,7 @@ import json
 from pydantic import BaseModel, Field
 from pydantic_evals.evaluators import Evaluator
 
-from cli.console import console
+from src.cli.console import console_printer
 from core.models import AIModel
 from core import Config
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
@@ -58,7 +58,15 @@ async def eval_agent(
         code_indexer_db=code_indexer_db, 
         sandbox=sandbox
     )
-
+    # TODO: changing the handling of this 
+    # by for example adding description templates with jinja2
+    available_agents = {
+        'requester_agent': 'Forms and sends raw http requests and exploitation playloads',
+        'shell_agent': 'Agent with access to a terminal so send recon and exploitation commands like a hacker.',
+        'planner_agent': 'Expert cybersecurity agent that plans what is the next step to do', 
+        'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
+    }
+    workflow_agent.register_agents(available_agents)
     # Setting up the prompt used 
     if hard_prompt:
         prompt = eval_metadata.hard_prompt
@@ -69,21 +77,31 @@ async def eval_agent(
         workflow_agent.init_webtarget_indexer(eval_metadata.target_host)
         web_resources_crawler = await workflow_agent.crawl_target()
         code_sections = await workflow_agent.embed_target()
-        # TODO: Handling code sections 
-
+        # TODO: better Handling code sections 
+        code_chunks = []
+        for code_section in code_sections:
+            chunk = {
+                    "file_path": code_section.url_path, 
+                    "language": code_section.title, 
+                    "code_content": str(code_section.content), 
+                    "embedding": code_section.embeddings
+                }
+            code_chunks.append(chunk)
+        insert = await code_indexer_db.batch_insert_code_chunks(code_chunks_data=code_chunks)
+        console_printer.print("Sync completed.", end="\r")
     # if with_context_engine:
 
     # if with_knowledge_base:
 
     # case if not guided, i.e. not using subtasks 
-    if not eval_metadata.guided:
+    if not guided:
         judge_output = await workflow_agent.start_workflow(prompt, eval_metadata.target_host)
-        # console.print(str(judge_output))
+        # console_printer.print(str(judge_output))
     else: 
         for subtask in eval_metadata.subtasks: 
             subtask_prompt = f"{subtask.subtask}\n{subtask.question}\n{subtask.hints}"
             judge_output = await workflow_agent.start_workflow(subtask_prompt, target=eval_metadata.target_host)
-            # console.print(str(judge_output))
+            # console_printer.print(str(judge_output))
 
 
 

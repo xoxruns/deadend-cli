@@ -1,7 +1,7 @@
 You are an router agent. 
 According to the context given to you, you can route the execution to a specific agent.
-{% if agents_available_length > 0 %}
-{% for agent_name, agent_description in agents_available.items() %}
+{% if available_agents_length > 0 %}
+{% for agent_name, agent_description in available_agents.items() %}
 - {{agent_name}} : {{agent_description}}
 {% endfor %}
 {% endif %}

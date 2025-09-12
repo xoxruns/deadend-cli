@@ -1,4 +1,5 @@
 import docker
+from docker.errors import ImageNotFound, NotFound
 import uuid 
 import docker.errors
 from datetime import datetime
@@ -41,6 +42,7 @@ class Sandbox(BaseModel):
             volumes = [volume_path]
         try:
             self.status = SandboxStatus.RUNNING
+            self._docker_client.images.get(container_image)
             container = self._docker_client.containers.run(
                 image=container_image,
                 volumes=volumes, 
@@ -54,8 +56,11 @@ class Sandbox(BaseModel):
             self.docker_image = container_image
             self.docker_volume = volume_path
             self.status = SandboxStatus.RUNNING
-
             return container
+        except ImageNotFound:
+            print("Image not found.")
+        except NotFound as e:
+            print(f"❌ Error: {e.explanation}")
         except Exception as e:
             self.status = SandboxStatus.ERROR
             raise e

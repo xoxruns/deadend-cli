@@ -35,7 +35,6 @@ class PayloadAgent(AgentRunner):
             model=model, 
             deps_type=TargetDeps, 
             output_type=str, 
-            system_prompt=None,
             instructions=self.instructions,
             tools=tools
         )

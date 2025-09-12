@@ -1,6 +1,7 @@
 from pydantic_ai.usage import Usage, UsageLimits
+from openai import AsyncOpenAI
 
-from cli import console
+from src.cli.console import console_printer
 from core import Config
 from core.models import AIModel
 from core.sandbox import Sandbox
@@ -16,7 +17,7 @@ from core.agents import (
     JudgeAgent, JudgeOutput
 )
 
-
+# TODO; Handling message history to be able to use it in a better way
 MAX_ITERATION = 10
 
 class WorflowRunner:
@@ -31,7 +32,7 @@ class WorflowRunner:
             self, 
             model: AIModel, 
             config: Config, 
-            code_indexer_db: AsyncCodeChunkRepository | None,
+            code_indexer_db: AsyncCodeChunkRepository,
             sandbox: Sandbox | None
         ):
         self.config = config
@@ -44,29 +45,34 @@ class WorflowRunner:
         self.code_indexer = SourceCodeIndexer(target=self.target)
     
     async def crawl_target(self):
-        return self.code_indexer.crawl_target()
+        return await self.code_indexer.crawl_target()
 
     async def embed_target(self):
-        return self.code_indexer.embed_webpage(openai_api_key="", embedding_model=self.config.embedding_model)
+        return await self.code_indexer.embed_webpage(openai_api_key=self.config.openai_api_key, embedding_model=self.config.embedding_model)
  
     def register_agents(self, agents: list[str]) -> None:
         self.available_agents = agents
 
     async def plan_tasks(self, goal: str, target: str):
+        openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
         self.context.set_target(target=target)
         self.planner = Planner(
             model=self.model, 
             target=target,
             api_spec="", 
+
         )
         usage_planner = Usage()
         usage_limits_planner = UsageLimits()
 
         resp = await self.planner.run(
             user_prompt=goal, 
-            message_history=self.context, 
+            message_history="", 
             usage=usage_planner, 
-            usage_limits=usage_limits_planner
+            usage_limits=usage_limits_planner, 
+            rag=self.code_indexer_db, 
+            openai=openai_embedder
+
         )
         self.context.set_tasks(resp.output.tasks)
         return str(resp.output.tasks)
@@ -75,16 +81,17 @@ class WorflowRunner:
         self.router = RouterAgent(
             model=self.model, 
             deps_type=None, 
-            available_agents=self.available_agents
+            available_agents=self.available_agents,
+            tools=[]
         )
 
         usage_router = Usage()
         usage_limits_router = UsageLimits()
 
         resp = await self.router.run(
-            prompt=prompt,
+            user_prompt=prompt+self.context.get_all_context(),
             deps=None, 
-            message_history=self.context.get_all_context(), 
+            message_history="", 
             usage=usage_router, 
             usage_limits=usage_limits_router
         )
@@ -95,7 +102,7 @@ class WorflowRunner:
     def _get_agent(self, agent_name:str) -> AgentRunner:
         match agent_name:
             case "shell_agent":
-                return ShellAgent(model=self.model, deps_type=None, context_history=self.context.get_all_context())
+                return ShellAgent(model=self.model, deps_type=None)
             case "requester_agent": 
                 return RequesterAgent(
                     model=self.model, 
@@ -120,8 +127,8 @@ class WorflowRunner:
         agent = self._get_agent(agent_name=agent_name)
         usage_agent = Usage()
         usage_limits_agent = UsageLimits()
-        resp = await agent.run(user_prompt=prompt, deps=None, 
-                    message_history=self.context.get_all_context(),
+        resp = await agent.run(user_prompt=prompt+self.context.get_all_context(), deps=None, 
+                    message_history="",
                     usage=usage_agent,
                     usage_limits=usage_limits_agent
             )
@@ -133,7 +140,7 @@ class WorflowRunner:
         
         # Plan the tasks (raise tasks error if empty task and rerun 2 more times if still empty)
         tasks = await self.plan_tasks(goal=prompt, target=target)
-        console.print(tasks)
+        console_printer.print(tasks)
 
         judge_agent = JudgeAgent(self.model, None, [])
         usage_judge = Usage()
@@ -143,11 +150,11 @@ class WorflowRunner:
         while not self.goal_achieved and i<MAX_ITERATION: 
             # get each task, route an agent and start the agent
             agent_router = await self.route_task(prompt=prompt)
-            console.print(str(agent_router))
+            console_printer.print(str(agent_router))
             
             # Run agent 
             agent_response = await self.run_agent(self.context.next_agent, prompt)
-            console.print(agent_response)
+            console_printer.print(agent_response)
 
             i += 1
             judge_output = await judge_agent.run(self.context.get_all_context(), None, usage_judge, usage_limits_judge)
@@ -156,6 +163,6 @@ class WorflowRunner:
             if judge_output.goal_achieved:
                 self.goal_achieved = True
         
-        console.print(str_judge)
-        console.print("END")
+        console_printer.print(str_judge)
+        console_printer.print("END")
         return judge_output

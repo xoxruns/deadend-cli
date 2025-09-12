@@ -30,7 +30,6 @@ class ShellAgent(AgentRunner):
         super().__init__(
             name="shell_agent", 
             model=model, 
-            system_prompt=None, 
             instructions=self.instructions, 
             deps_type=deps_type, 
             output_type=ShellOutput, 

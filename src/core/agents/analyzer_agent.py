@@ -30,7 +30,6 @@ class AnalyzerAgent(AgentRunner):
         super().__init__(
             name="analyzer_agent", 
             model=model,
-            system_prompt=None,
             instructions=self.instructions,
             deps_type=TargetDeps, 
             output_type=output_type, 

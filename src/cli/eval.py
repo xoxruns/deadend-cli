@@ -2,7 +2,7 @@ import logfire
 import socket
 import json
 
-from cli.console import console
+from src.cli.console import console_printer
 
 from core import Config, init_rag_database, sandbox_setup
 from eval.eval import EvalMetadata, eval_agent
@@ -26,9 +26,9 @@ async def eval_interface(config: Config, eval_metadata_file: str, providers: lis
     (address, port) = eval_metadata.target_host.split(':')
     try: 
         s.connect((address, int(port)))
-        console.print("Target reachable.")
+        console_printer.print("Target reachable.")
     except Exception as e:
-        console.print(f"something's wrong with {address}:{port}. Error {e}")
+        console_printer.print(f"something's wrong with {address}:{port}. Error {e}")
     finally:
         s.close()
     
@@ -41,15 +41,15 @@ async def eval_interface(config: Config, eval_metadata_file: str, providers: lis
 
     try: 
         # Initializing the rag code indexer database
-        rag_db = init_rag_database(config.db_url)
+        rag_db = await init_rag_database(config.db_url)
     except Exception: # TODO: This section need to be handled in a better way
-        console.print("Vector DB not accessible. Exiting now.")
+        console_printer.print("Vector DB not accessible. Exiting now.")
         exit()
     
     try:
         sandbox_manager = sandbox_setup()
     except Exception as e: 
-        console.print(f"Sandbox manager could not be started : {e}")
+        console_printer.print(f"Sandbox manager could not be started : {e}")
         exit()
     
     # Monitoring 
@@ -58,9 +58,10 @@ async def eval_interface(config: Config, eval_metadata_file: str, providers: lis
 
     # adding automatic build and ask prompt 
     sandbox = sandbox_manager.create_sandbox(image="kali_deadend")
+    print(rag_db)
     # TODO: first test to be changed 
     await eval_agent(
-        model=model_registry.get_model(), 
+        model=model_registry.get_model(provider=providers[0]), 
         # evaluators=[CtfEvaluator],
         config=config,
         code_indexer_db=rag_db, 
@@ -71,7 +72,8 @@ async def eval_interface(config: Config, eval_metadata_file: str, providers: lis
         with_context_engine=True, 
         with_code_indexing=True, 
         with_knowledge_base=True, 
-        output_report="./"
+        output_report="./", 
+        hard_prompt=False
     )
     # # Configuring workflow runner 
     # for model in models:
