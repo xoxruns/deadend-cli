@@ -157,10 +157,16 @@ class WorflowRunner:
             console_printer.print(agent_response)
 
             i += 1
-            judge_output = await judge_agent.run(self.context.get_all_context(), None, usage_judge, usage_limits_judge)
+            judge_output = await judge_agent.run(
+                user_prompt=self.context.get_all_context(), 
+                deps=None, 
+                message_history="",
+                usage=usage_judge, 
+                usage_limits=usage_limits_judge
+            )
             str_judge = str(judge_output)
             self.context.add_agent_response(str_judge)
-            if judge_output.goal_achieved:
+            if judge_output.output.goal_achieved:
                 self.goal_achieved = True
         
         console_printer.print(str_judge)

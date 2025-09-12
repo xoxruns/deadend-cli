@@ -25,7 +25,7 @@ class ShellAgent(AgentRunner):
             model: openai.OpenAIModel,
             deps_type: Any | None, 
     ):
-        self.instructions = self._shell_agent_instructions(context_agent=context_history)
+        self.instructions = self._shell_agent_instructions()
 
         super().__init__(
             name="shell_agent", 
