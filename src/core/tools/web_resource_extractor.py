@@ -67,7 +67,7 @@ class WebResourceExtractor:
             try: 
                 start_time = time.time()
                 
-                await page.goto(url, wait_until='networkidle', timeout=30000)
+                await page.goto('http://' + url, wait_until='networkidle', timeout=30000)
                 print(f"Waiting {wait_time}s for dynamic content...")
                 await asyncio.sleep(wait_time)
 

@@ -48,6 +48,7 @@ class Sandbox(BaseModel):
                 image=image,
                 volumes=volumes, 
                 runtime='runsc',
+                network="shared_net",
                 tty=True,
                 command=start_process,
                 detach=True,
