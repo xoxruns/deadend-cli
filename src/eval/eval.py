@@ -67,6 +67,8 @@ async def eval_agent(
         'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
     }
     workflow_agent.register_agents(available_agents)
+
+    workflow_agent.register_sandbox_runner()
     # Setting up the prompt used 
     if hard_prompt:
         prompt = eval_metadata.hard_prompt

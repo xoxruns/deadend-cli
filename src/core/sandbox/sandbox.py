@@ -34,7 +34,7 @@ class Sandbox(BaseModel):
         super().__init__(**data)
         self._docker_client = docker_client
 
-    def start(self, container_image: str = "ubuntu:latest", volume_path: str | None = None, start_process: str = "/bin/bash"):
+    def start(self, container_image: str, volume_path: str | None = None, start_process: str = "/bin/bash"):
 
         if volume_path == None:
             volumes = None
@@ -42,9 +42,10 @@ class Sandbox(BaseModel):
             volumes = [volume_path]
         try:
             self.status = SandboxStatus.RUNNING
-            self._docker_client.images.get(container_image)
+            image = self._docker_client.images.get(container_image)
+
             container = self._docker_client.containers.run(
-                image=container_image,
+                image=image,
                 volumes=volumes, 
                 runtime='runsc',
                 tty=True,
@@ -52,15 +53,18 @@ class Sandbox(BaseModel):
                 detach=True,
                 stdin_open=True
             )
+            print(container)
             self.container_id = container.id 
             self.docker_image = container_image
             self.docker_volume = volume_path
             self.status = SandboxStatus.RUNNING
             return container
         except ImageNotFound:
-            print("Image not found.")
+            print(f"❌ Error: Image not found {container_image}")
+            raise ImageNotFound
         except NotFound as e:
             print(f"❌ Error: {e.explanation}")
+            raise NotFound
         except Exception as e:
             self.status = SandboxStatus.ERROR
             raise e

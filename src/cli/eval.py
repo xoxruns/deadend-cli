@@ -57,8 +57,8 @@ async def eval_interface(config: Config, eval_metadata_file: str, providers: lis
     logfire.instrument_pydantic_ai()
 
     # adding automatic build and ask prompt 
-    sandbox = sandbox_manager.create_sandbox(image="kali_deadend")
-    print(rag_db)
+    sandbox_id = sandbox_manager.create_sandbox(image="kali_deadend")
+    sandbox = sandbox_manager.get_sandbox(sandbox_id=sandbox_id)
     # TODO: first test to be changed 
     await eval_agent(
         model=model_registry.get_model(provider=providers[0]), 

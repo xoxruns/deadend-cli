@@ -1,5 +1,6 @@
 from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
+import docker
 
 from src.cli.console import console_printer
 from core import Config
@@ -8,6 +9,7 @@ from core.sandbox import Sandbox
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.tools.code_indexer import SourceCodeIndexer
 from core.context.context_engine import ContextEngine
+from core.tools.shell import ShellDeps, ShellRunner
 from core.agents import (
     AgentRunner, 
     Planner, PlannerAgent, PlannerOutput,
@@ -52,6 +54,13 @@ class WorflowRunner:
  
     def register_agents(self, agents: list[str]) -> None:
         self.available_agents = agents
+
+    def register_sandbox_runner(self):
+        docker_client = docker.from_env()
+        sandbox = Sandbox(docker_client=docker_client)
+        sandbox.start(container_image="kali_deadend:latest")
+        print(f"test = {sandbox}")
+        self.sandbox = sandbox
 
     async def plan_tasks(self, goal: str, target: str):
         openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
@@ -102,7 +111,7 @@ class WorflowRunner:
     def _get_agent(self, agent_name:str) -> AgentRunner:
         match agent_name:
             case "shell_agent":
-                return ShellAgent(model=self.model, deps_type=None)
+                return ShellAgent(model=self.model, sandbox=self.sandbox)
             case "requester_agent": 
                 return RequesterAgent(
                     model=self.model, 
@@ -110,10 +119,10 @@ class WorflowRunner:
                     target_information=self.context.target
                 )
             case "planner_agent":
-                return PlannerAgent(
-                    self.model,
-                    deps_type=None, 
-                    tools=[]
+                return Planner(
+                    self.model, 
+                    target=self.target,
+                    api_spec=""
                 )
             case _:
                 self.context.add_not_found_agent(agent_name=agent_name)
@@ -127,6 +136,7 @@ class WorflowRunner:
         agent = self._get_agent(agent_name=agent_name)
         usage_agent = Usage()
         usage_limits_agent = UsageLimits()
+
         resp = await agent.run(user_prompt=prompt+self.context.get_all_context(), deps=None, 
                     message_history="",
                     usage=usage_agent,

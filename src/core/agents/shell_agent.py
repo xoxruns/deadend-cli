@@ -6,7 +6,8 @@ from typing import Any
 from dataclasses import dataclass
 
 from .factory import AgentRunner
-from core.tools.shell import sandboxed_shell_tool, CmdLog
+from core.sandbox import Sandbox
+from core.tools.shell import sandboxed_shell_tool, CmdLog,ShellRunner, ShellDeps
 
 
 class ShellOutput(BaseModel):
@@ -23,23 +24,24 @@ class ShellAgent(AgentRunner):
     def __init__(
             self, 
             model: openai.OpenAIModel,
-            deps_type: Any | None, 
+            sandbox: Sandbox
     ):
         self.instructions = self._shell_agent_instructions()
-
+        self.sandbox = sandbox
         super().__init__(
             name="shell_agent", 
             model=model, 
             instructions=self.instructions, 
-            deps_type=deps_type, 
+            deps_type=ShellRunner, 
             output_type=ShellOutput, 
-            tools=[Tool(sandboxed_shell_tool)]
+            tools=[Tool(sandboxed_shell_tool, max_retries=10)]
         )
         
 
 
 
-    async def run(self, user_prompt, deps, message_history, usage: Usage, usage_limits:UsageLimits):
+    async def run(self, user_prompt, message_history,deps, usage: Usage, usage_limits:UsageLimits):
+        deps = ShellRunner("session_agent", self.sandbox)
         return await super().run(user_prompt=user_prompt, deps=deps, message_history=message_history, usage=usage, usage_limits=usage_limits)
     
 
