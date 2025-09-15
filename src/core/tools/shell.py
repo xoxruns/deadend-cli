@@ -28,7 +28,7 @@ class ShellRunner:
     def run_command(self, new_cmd: str):
         result = self.sandbox.execute_command(new_cmd, False)
         cmds_number = len(self.cmd_log.keys())
-        console_printer.print(f"command run function inside shellrunner : {result}")
+        print(f"command run function inside shellrunner : {result}")
         self.cmd_log[cmds_number+1] = CmdLog(
             stdin=new_cmd,
             stdout=result["stdout"],
