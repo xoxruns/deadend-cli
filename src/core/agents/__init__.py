@@ -1,4 +1,4 @@
-from .planner import Planner, PlannerAgent, PlannerOutput
+from .planner import Planner, PlannerAgent, PlannerOutput, RagDeps
 from .router import RouterAgent, RouterOutput
 from .payload_agent import PayloadAgent
 from .shell_agent import ShellAgent, ShellOutput
@@ -8,7 +8,7 @@ from .factory import AgentRunner
 
 __all__ = [
             AgentRunner,
-            Planner, PlannerAgent, PlannerOutput, 
+            Planner, PlannerAgent, PlannerOutput, RagDeps,
             PayloadAgent, 
             ShellAgent, ShellOutput, 
             RequesterAgent, RequesterOutput, 

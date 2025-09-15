@@ -39,7 +39,7 @@ class PlannerAgent(AgentRunner):
             name="planner_agent", 
             model=model,  
             instructions=self.instructions, 
-            deps_type=None, 
+            deps_type=RagDeps, 
             output_type=output_type, 
             tools=tools
         )

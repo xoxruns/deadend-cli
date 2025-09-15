@@ -12,7 +12,7 @@ from core.context.context_engine import ContextEngine
 from core.tools.shell import ShellDeps, ShellRunner
 from core.agents import (
     AgentRunner, 
-    Planner, PlannerAgent, PlannerOutput,
+    Planner, PlannerAgent, PlannerOutput, RagDeps,
     ShellAgent, ShellOutput,
     RequesterAgent, RequesterOutput, 
     RouterAgent,RouterOutput, 
@@ -119,16 +119,17 @@ class WorflowRunner:
                     target_information=self.context.target
                 )
             case "planner_agent":
-                return Planner(
+                return PlannerAgent(
                     self.model, 
-                    target=self.target,
-                    api_spec=""
+                    output_type=PlannerOutput,
+                    tools=[]
                 )
             case _:
                 self.context.add_not_found_agent(agent_name=agent_name)
                 return RouterAgent(
                     model=self.model, 
                     deps_type=None, 
+                    tools=[],
                     available_agents=self.available_agents
                 )
     
@@ -136,12 +137,26 @@ class WorflowRunner:
         agent = self._get_agent(agent_name=agent_name)
         usage_agent = Usage()
         usage_limits_agent = UsageLimits()
-
-        resp = await agent.run(user_prompt=prompt+self.context.get_all_context(), deps=None, 
+        if agent.name != "planner_agent":
+            resp = await agent.run(user_prompt=prompt+self.context.get_all_context(), deps=None, 
+                        message_history="",
+                        usage=usage_agent,
+                        usage_limits=usage_limits_agent
+                )
+        else:
+            openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
+            rag_deps = RagDeps(
+            openai=openai_embedder,
+            rag=self.code_indexer_db,
+            target=self.target
+            )
+            resp = await agent.run(
+                    user_prompt=prompt+self.context.get_all_context(), 
                     message_history="",
                     usage=usage_agent,
+                    deps=rag_deps,
                     usage_limits=usage_limits_agent
-            )
+                )
         agent_response = resp.output
         self.context.add_agent_response(agent_response)
         return agent_response
@@ -155,7 +170,8 @@ class WorflowRunner:
         judge_agent = JudgeAgent(self.model, None, [])
         usage_judge = Usage()
         usage_limits_judge = UsageLimits()
-        
+        str_judge = ""
+        judge_output = ""
         i = 0
         while not self.goal_achieved and i<MAX_ITERATION: 
             # get each task, route an agent and start the agent

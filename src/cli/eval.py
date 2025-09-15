@@ -12,7 +12,12 @@ from core.sandbox import SandboxManager
 from core.workflow_runner import WorflowRunner
 
 
-async def eval_interface(config: Config, eval_metadata_file: str, providers: list[str]):
+async def eval_interface(
+        config: Config, 
+        eval_metadata_file: str, 
+        providers: list[str],
+        guided: bool,
+    ):
     # Process the evaluation metadata
     # We do so by taking the `eval_metadata_file` and processing it 
     # to extract the relevant information about the evaluation and 
@@ -67,7 +72,7 @@ async def eval_interface(config: Config, eval_metadata_file: str, providers: lis
         code_indexer_db=rag_db, 
         sandbox=sandbox, 
         eval_metadata=eval_metadata, 
-        guided=False, 
+        guided=guided, 
         human_intervention=False, 
         with_context_engine=True, 
         with_code_indexing=True, 
