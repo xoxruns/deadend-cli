@@ -3,6 +3,7 @@ from asgiref.sync import sync_to_async
 import httptools
 import ssl
 from pydantic_ai import RunContext
+from cli.console import console_printer
 
 from .zap_connector import ZapConnector 
 from ..utils.structures import *
@@ -29,6 +30,7 @@ class Requester:
         bytes_request=request_data.encode('utf-8')
         # parsed_data = parse_http_request(bytes_request)
         # if parsed_data!=None: 
+        console_printer.print(request_data)
         response = send_raw_request(host=host, port=port,target_host=target_host, request=bytes_request)
         return response
         # else: 
@@ -138,9 +140,15 @@ def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:
     else: 
         return False
             
-async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str) -> str | bytes:
+async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str, proxy: bool) -> str | bytes:
     requester = Requester(verify_ssl=False)
-    
+    # TODO: here the handling should be reviewed to work for all cases 
+    # I don't think everything works here but we will keep it this way for now
+    # Adding error handling could be great too. 
     # localhost:8080 is the proxy
-    response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
+    if proxy:
+        response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
+    else:
+        (host, port) = target_host.split(":")
+        response = await requester.send_raw_data(host=host, port=int(port),target_host=target_host, request_data=raw_request)
     return response
