@@ -1,8 +1,19 @@
 The shell tool gives access to a terminal running kali linux with basic commands. 
 Specifically the usage should follow each specific goal.
-For each speci
+
 [web app target enumeration]
 Use the tools : 
 - curl for sending and test payloads
 - gobuster for fuzzing a specific target
 - fuff for fuzzing targets, headers...
+
+[static analysis tools]
+The static analysis tools should only be used if you have access to a specific code file that you can open 
+and put in context. 
+- semgrep
+
+For each specific goal you should use only the following tools described for a specific objective above. 
+DO NOT USE any other tools to keep it concise. 
+For example, if your goal includes a web target enumeration, you should first look in the context given, if the enumeration has already been done. 
+if the endpoints have been retrieved or are in context, you can validate them with curl. 
+You can also use the fuzzing tools for discovering more endpoints if needed. 

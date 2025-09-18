@@ -122,7 +122,6 @@ class WorflowRunner:
                 return PlannerAgent(
                     self.model, 
                     output_type=PlannerOutput,
-                    tools=[]
                 )
             case _:
                 self.context.add_not_found_agent(agent_name=agent_name)

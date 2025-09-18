@@ -13,8 +13,6 @@ class RagDeps:
     rag: AsyncCodeChunkRepository
     target: str
 
-
-
 class HttpMethod(Enum):
     GET = "GET"
     POST = "POST"
@@ -38,9 +36,9 @@ class Task(BaseModel):
     status: Literal['pending', 'failed', 'success']
     output: str
 
-# class AIModel(BaseModel):
-#     model_name: str 
-#     api_key: str
+class AIModel(BaseModel):
+    model_name: str 
+    api_key: str
 
 @dataclass
 class TargetDeps: 

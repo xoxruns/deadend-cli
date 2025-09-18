@@ -4,13 +4,14 @@ from pydantic_ai import RunContext, Tool
 from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
 
-from core.utils.structures import AIModel, Task
+from core.utils.structures import Task
 from .factory import AgentRunner
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.config.settings import Config
 from core.models import AIModel
 from core.utils.structures import RagDeps
 from src.prompts import render_agent_instructions
+from core.tools.webapp_code_rag import webapp_code_rag
 
 
 class PlannerOutput(BaseModel):
@@ -24,7 +25,6 @@ class PlannerAgent(AgentRunner):
             self, 
             model: AIModel, 
             output_type: Any | None, 
-            tools: list
         ):
         self.instructions = self._planner_agent_instructions()
 
@@ -34,35 +34,35 @@ class PlannerAgent(AgentRunner):
             instructions=self.instructions, 
             deps_type=RagDeps, 
             output_type=output_type, 
-            tools=tools
+            tools=[Tool(webapp_code_rag, max_retries=5)]
         )
 
-        @self.agent.tool
-        async def retrieve_webpage_db(context: RunContext[RagDeps], search_query: str) -> str :
-            """
-            This tools calls to the rag that might have interesting information 
-            on the target 
-            """
-            res = ""
-            if len(context.deps.target)  > 1:
-                search_query += search_query+ '\n The target supplied is: ' + context.deps.target
-            embedding = await context.deps.openai.embeddings.create(
-                input=search_query, 
-                model='text-embedding-3-small'
-            )
-            assert len(embedding.data) == 1, (
-                f'Expected 1 embedding, got {len(embedding.data)}, doc query: {search_query!r}'
-            )
-            embedding = embedding.data[0].embedding
+        # @self.agent.tool
+        # async def retrieve_webpage_db(context: RunContext[RagDeps], search_query: str) -> str :
+        #     """
+        #     This tools calls to the rag that might have interesting information 
+        #     on the target 
+        #     """
+        #     res = ""
+        #     if len(context.deps.target)  > 1:
+        #         search_query += search_query+ '\n The target supplied is: ' + context.deps.target
+        #     embedding = await context.deps.openai.embeddings.create(
+        #         input=search_query, 
+        #         model='text-embedding-3-small'
+        #     )
+        #     assert len(embedding.data) == 1, (
+        #         f'Expected 1 embedding, got {len(embedding.data)}, doc query: {search_query!r}'
+        #     )
+        #     embedding = embedding.data[0].embedding
 
-            results = await context.deps.rag.similarity_search(
-                query_embedding=embedding, 
-                limit=5
-            )
-            for chunk, similarity in results: 
-                res = res + '\n' + chunk.code_content
+        #     results = await context.deps.rag.similarity_search(
+        #         query_embedding=embedding, 
+        #         limit=5
+        #     )
+        #     for chunk, similarity in results: 
+        #         res = res + '\n' + chunk.code_content
             
-            return res
+        #     return res
 
     def _planner_agent_instructions(self, **kwargs):
         
@@ -112,7 +112,6 @@ class Planner:
         self.agent = PlannerAgent(
             model=model, 
             output_type=PlannerOutput,
-            tools=[]
         )
 
     async def run(self, 

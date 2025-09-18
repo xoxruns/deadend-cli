@@ -150,6 +150,9 @@ async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str, 
     if proxy:
         response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
     else:
-        (host, port) = target_host.split(":")
+        target_list = target_host.split(":")
+        port = target_list.pop()
+        host = target_list.pop()
+
         response = await requester.send_raw_data(host=host, port=int(port),target_host=target_host, request_data=raw_request)
     return response
