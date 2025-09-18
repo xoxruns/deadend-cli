@@ -32,6 +32,7 @@ class Requester:
         # if parsed_data!=None: 
         console_printer.print(request_data)
         response = send_raw_request(host=host, port=port,target_host=target_host, request=bytes_request)
+        console_printer.print(response)
         return response
         # else: 
         #     # TODO: a better error handling must be done here to return why the request is malformed.

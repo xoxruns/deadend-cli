@@ -1,24 +1,17 @@
 from typing import List, Any
 from pydantic import BaseModel
-from pydantic_ai import RunContext
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai import RunContext, Tool
 from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
-from dataclasses import dataclass
 
 from core.utils.structures import AIModel, Task
 from .factory import AgentRunner
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.config.settings import Config
 from core.models import AIModel
+from core.utils.structures import RagDeps
 from src.prompts import render_agent_instructions
 
-@dataclass
-class RagDeps:
-    openai: AsyncOpenAI
-    rag: AsyncCodeChunkRepository
-    target: str
 
 class PlannerOutput(BaseModel):
     tasks: List[Task]

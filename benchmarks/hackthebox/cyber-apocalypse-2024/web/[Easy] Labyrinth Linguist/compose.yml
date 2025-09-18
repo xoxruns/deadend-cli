@@ -3,10 +3,6 @@ services:
     build: .
     container_name: web_labyrinth_linguist
     networks:
-      - shared_net
+      - default
     ports:
       - "1337:1337"
-
-networks:
-  shared_net:
-    external: true
