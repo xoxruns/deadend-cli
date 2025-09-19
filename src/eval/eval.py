@@ -61,8 +61,9 @@ async def eval_agent(
     # TODO: changing the handling of this 
     # by for example adding description templates with jinja2
     available_agents = {
-        'requester_agent': 'Forms and sends raw http requests and exploitation playloads',
-        'shell_agent': 'Agent with access to a terminal so send recon and exploitation commands like a hacker.',
+        # 'requester_agent': 'Forms and sends raw http requests and exploitation playloads',
+        # 'shell_agent': 'Agent with access to a terminal so send recon and exploitation commands like a hacker.',
+        'webapp_recon': "Expert cybersecurity agent that enumerates a web target to understand the architecture and understand the endpoints and where an attack vector could be tested.",
         'planner_agent': 'Expert cybersecurity agent that plans what is the next step to do', 
         'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
     }

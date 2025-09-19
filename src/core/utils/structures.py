@@ -1,11 +1,58 @@
 from openai import AsyncOpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, Literal
 from enum import Enum
 from dataclasses import dataclass
 
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
+from core.sandbox import Sandbox
 
+class CmdLog(BaseModel):
+    cmd_input: str = Field(description="represents a shell's stdin", alias="stdin")
+    cmd_output: str = Field(description="represents a shell's stdout", alias="stdout")
+    cmd_error: str = Field(description="represents a shell's stderr", alias="stderr")
+
+
+class ShellRunner:
+    """
+    Sandboxed shell runner 
+    """
+    session: str
+    sandbox: Sandbox 
+    cmd_log: Dict[int, CmdLog]
+    
+    def __init__(self, session: str | None, sandbox: Sandbox):
+        self.session = session
+        self.sandbox = sandbox
+
+        self.cmd_log = {}
+    
+    def run_command(self, new_cmd: str):
+        result = self.sandbox.execute_command(new_cmd, False)
+        cmds_number = len(self.cmd_log.keys())
+        print(f"command run function inside shellrunner : {result}")
+        self.cmd_log[cmds_number+1] = CmdLog(
+            stdin=new_cmd,
+            stdout=result["stdout"],
+            stderr=result["stderr"] 
+        )
+        return 
+
+    def get_cmd_log(self) -> Dict[int, CmdLog]:
+        return self.cmd_log
+
+@dataclass
+class ShellDeps:
+    shell_runner: ShellRunner
+
+@dataclass
+class WebappreconDeps:
+    openai: AsyncOpenAI
+    rag: AsyncCodeChunkRepository
+    target: str
+    shell_runner: ShellRunner
+
+    
 
 @dataclass
 class RagDeps:

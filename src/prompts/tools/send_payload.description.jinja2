@@ -1,0 +1,19 @@
+The "requester" tool performs low-level HTTP requests by sending raw HTTP payloads (method, path, headers, and body).
+It should receive a valid crafted http request and can send it. 
+This request could contain the testing payload or exploit payload to test with the target. 
+It behaves like a programmable proxy / Burp Suite requester: it sends exact bytes to the target, receives raw bytes back. 
+The tool does not modify or interpret request/response bodies except to return them. 
+It supports binary bodies, chunked transfer, and arbitrary headers, and it can connect via HTTP and HTTPS.
+
+Best practices for the agent using the tool:
+- Normalize method to uppercase.
+- If `body_encoding` omitted and body contains non-UTF-8 bytes, treat as base64.
+- Always return `elapsed_ms` and any TLS info for debugging.
+- Ensure that the `host` and `User-Agent` headers are always present. 
+- extract ONLY ONE request that seems the more likely to work.
+- return ONLY the formatted request NOTHING MORE.
+Examples:
+1) GET
+'GET /endpoint?query=possible-parameters HTTP/1.1\r\nhost: target.domain\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\r\nAccept: */*\r\nConnection: keep-alive\r\nother-headers: other informations\r\n\r\n'
+2) POST JSON
+'POST /endpoint HTTP/1.1\r\nhost: target.domain\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36\r\nAccept: */*\r\nConnection: keep-alive\r\nother-headers: other informations\r\n{"username": "test"}\r\n\r\n'

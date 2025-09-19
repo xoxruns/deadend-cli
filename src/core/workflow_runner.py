@@ -9,14 +9,15 @@ from core.sandbox import Sandbox
 from core.rag.code_indexer_db import AsyncCodeChunkRepository
 from core.tools.code_indexer import SourceCodeIndexer
 from core.context.context_engine import ContextEngine
-from core.tools.shell import ShellDeps, ShellRunner
+from core.utils.structures import ShellDeps, ShellRunner, WebappreconDeps
 from core.agents import (
     AgentRunner, 
     Planner, PlannerAgent, PlannerOutput, RagDeps,
     ShellAgent, ShellOutput,
     RequesterAgent, RequesterOutput, 
     RouterAgent,RouterOutput, 
-    JudgeAgent, JudgeOutput
+    JudgeAgent, JudgeOutput,
+    WebappReconAgent, 
 )
 
 # TODO; Handling message history to be able to use it in a better way
@@ -110,12 +111,18 @@ class WorflowRunner:
     
     def _get_agent(self, agent_name:str) -> AgentRunner:
         match agent_name:
-            case "shell_agent":
-                return ShellAgent(model=self.model, sandbox=self.sandbox)
-            case "requester_agent": 
-                return RequesterAgent(
+            # case "shell_agent":
+            #     return ShellAgent(model=self.model, sandbox=self.sandbox)
+            # case "requester_agent": 
+            #     return RequesterAgent(
+            #         model=self.model, 
+            #         deps_type=None, 
+            #         target_information=self.context.target
+            #     )
+            case "webapp_recon":
+                return WebappReconAgent(
                     model=self.model, 
-                    deps_type=None, 
+                    deps_type=WebappreconDeps, 
                     target_information=self.context.target
                 )
             case "planner_agent":
@@ -136,13 +143,7 @@ class WorflowRunner:
         agent = self._get_agent(agent_name=agent_name)
         usage_agent = Usage()
         usage_limits_agent = UsageLimits()
-        if agent.name != "planner_agent":
-            resp = await agent.run(user_prompt=prompt+self.context.get_all_context(), deps=None, 
-                        message_history="",
-                        usage=usage_agent,
-                        usage_limits=usage_limits_agent
-                )
-        else:
+        if agent.name == "planner_agent":
             openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
             rag_deps = RagDeps(
             openai=openai_embedder,
@@ -155,7 +156,33 @@ class WorflowRunner:
                     usage=usage_agent,
                     deps=rag_deps,
                     usage_limits=usage_limits_agent
+                )   
+        elif agent_name == "webapp_recon":
+            openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
+            shell_runner = ShellRunner("session_agent", self.sandbox)
+
+            webappercon_deps = WebappreconDeps(
+            openai=openai_embedder,
+            rag=self.code_indexer_db,
+            target=self.target,
+            shell_runner=shell_runner
+            )
+            resp = await agent.run(
+                    user_prompt=prompt+self.context.get_all_context(), 
+                    message_history="",
+                    usage=usage_agent,
+                    deps=webappercon_deps,
+                    usage_limits=usage_limits_agent
                 )
+        else:
+            resp = await agent.run(
+                user_prompt=prompt+self.context.get_all_context(), 
+                deps=None, 
+                message_history="",
+                usage=usage_agent,
+                usage_limits=usage_limits_agent
+            )
+            
         agent_response = resp.output
         self.context.add_agent_response(agent_response)
         return agent_response

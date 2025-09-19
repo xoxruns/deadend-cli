@@ -119,13 +119,16 @@ def send_raw_request(host, port, target_host, request):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     response = ""
+
+    # TODO: Handling of both http and https methods is necessary here
     try: 
         s.connect((host, port))
-        sso = context.wrap_socket(s, server_hostname=target_host)
-        sso.send(request)
-        response = sso.recv(4096)
-        sso.close()
+        # sso = context.wrap_socket(s, server_hostname=target_host)
+        s.send(request)
+        response = s.recv(4096)
+        # sso.close()
         s.close()
+
     except socket.error as err: 
         print(f"An error has occured when sending request. :{err}".format(err))
         response = f"Request not send. Please retry. The error is : {err}".format(err)

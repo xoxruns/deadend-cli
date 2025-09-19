@@ -5,6 +5,7 @@ from .shell_agent import ShellAgent, ShellOutput
 from .requester_agent import RequesterAgent, RequesterOutput
 from .judge import JudgeAgent, JudgeOutput
 from .factory import AgentRunner
+from .webapp_recon_agent import WebappReconAgent
 
 __all__ = [
             AgentRunner,
@@ -13,5 +14,6 @@ __all__ = [
             ShellAgent, ShellOutput, 
             RequesterAgent, RequesterOutput, 
             RouterAgent, RouterOutput, 
-            JudgeOutput, JudgeAgent
+            JudgeOutput, JudgeAgent,
+            WebappReconAgent
 ]

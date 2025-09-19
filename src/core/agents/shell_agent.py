@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 from .factory import AgentRunner
 from core.sandbox import Sandbox
-from core.tools.shell import sandboxed_shell_tool, CmdLog,ShellRunner, ShellDeps
+from core.tools.shell import sandboxed_shell_tool
+from core.utils.structures import CmdLog,ShellRunner, ShellDeps
 
 
 class ShellOutput(BaseModel):
