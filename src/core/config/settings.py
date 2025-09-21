@@ -29,7 +29,7 @@ class Config:
     anthropic_api_key: str | None = os.getenv("ANTHROPIC_API_KEY")
     anthropic_model_name : str | None = os.getenv("ANTHROPIC_MODEL")
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
-    gemini_model_name : str | None = os.getenv("GEMINI_MODEL")
+    gemini_model_name : str | None = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
     # Embedding model
     embedding_model: str | None  = os.getenv("EMBEDDING_MODEL")
@@ -77,9 +77,10 @@ class Config:
             )
 
         if cls.gemini_api_key:
-            model_settings.anthropic = ModelConfig(
+            model_settings.gemini = ModelConfig(
                 api_key=cls.gemini_api_key,
-                model_name=cls.gemini_model_name if cls.gemini_model_name else "gemini-1.5-pro"
+                model_name=cls.gemini_model_name if cls.gemini_model_name else "gemini-2.5-flash",
+                # base_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"            
             )
         
         return model_settings

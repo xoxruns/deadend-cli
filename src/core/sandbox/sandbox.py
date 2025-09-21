@@ -47,8 +47,8 @@ class Sandbox(BaseModel):
             container = self._docker_client.containers.run(
                 image=image,
                 volumes=volumes, 
-                runtime='runsc',
-                network="default",
+                # runtime='runsc',
+                network="shared_net",
                 tty=True,
                 command=start_process,
                 detach=True,

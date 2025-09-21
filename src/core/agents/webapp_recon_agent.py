@@ -22,8 +22,6 @@ class RequesterOutput(BaseModel):
     state: str
     raw_response: str
 
-
-
 class WebappReconAgent(AgentRunner):
     """
     The webapp recon agent is the agent in charge of doing the recon on the target. 

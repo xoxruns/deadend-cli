@@ -37,25 +37,6 @@ class RequesterAgent(AgentRunner):
             tools=[Tool(is_valid_request), Tool(send_payload)]
         )
 
-        # @self.agent.tool
-        # def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:
-        #     bytes_request=raw_request.encode('utf-8')
-        #     parsed_data = parse_http_request(bytes_request)
-
-        #     if parsed_data != None:
-        #         return True
-        #     else: 
-        #         return False
-            
-        # @self.agent.tool
-        # async def send_payload(ctx: RunContext[str], target_host: str, raw_request:str) -> str | bytes:
-        #     requester = Requester(verify_ssl=False)
-            
-        #     # localhost:8080s is the proxy
-        #     response = await requester.send_raw_data(host='localhost', port=8080,target_host=target_host, request_data=raw_request)
-        #     return response
-
-
     def reset_agent(self):
         """Resets the agent with new instructions that could contain better feedback loop"""
         raise NotImplementedError

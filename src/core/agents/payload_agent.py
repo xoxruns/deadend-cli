@@ -3,15 +3,7 @@ from pydantic_ai.usage import Usage, UsageLimits
 from pydantic_ai import RunContext
 
 from .factory import AgentRunner
-from ..utils.structures import RequestStruct, TargetDeps
-
-#    payload_agent = Agent(
-            # model=self.model, 
-            # system_prompt=payload_system_prompt, 
-            # deps_type=TargetDeps,  
-            # output_type=RequestStruct
-        # )
-
+from ..utils.structures import TargetDeps
 
 class PayloadAgent(AgentRunner):
     """
@@ -58,8 +50,6 @@ class PayloadAgent(AgentRunner):
         for key, value in kwargs.items():
             if key=='analyzer_results':
                 analyzer_results=value
-            # if key=='previous_requests_and_responses':
-            #     previous_requests_and_responses=value
         
         return """
         You are a web application security expert. You have a great understanding of most web vulnerabilities.
