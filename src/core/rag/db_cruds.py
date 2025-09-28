@@ -1,11 +1,8 @@
 import asyncio
-import asyncpg
-import logging
 import uuid
 import numpy as np
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import Column, Integer, String, Text, DateTime, Float, select, func
+from sqlalchemy import text, Column, Integer, String, Text, DateTime, Float, select, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgresql import UUID
 from pgvector.sqlalchemy import Vector
@@ -13,39 +10,13 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any, AsyncGenerator
 from contextlib import asynccontextmanager
 
+from .models import Base, CodeChunk, CodebaseChunk
 
 
-# Database setup
-Base = declarative_base()
 
-class CodeChunk(Base):
+class RetrievalDatabaseConnector:
     """
-    Model for storing code chunks with their embeddings.
-    """
-    __tablename__ = 'code_chunks'
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    file_path = Column(String(500), nullable=False)
-    # function_name = Column(String(200), nullable=True)
-    # class_name = Column(String(200), nullable=True)
-    code_content = Column(Text, nullable=False)
-    language = Column(String(50), nullable=False)
-    # start_line = Column(Integer, nullable=True)
-    # end_line = Column(Integer, nullable=True)
-    
-    embedding = Column(Vector(1536), nullable=False)
-    
-    # Metadata
-    created_at = Column(DateTime, default=datetime.now())
-    updated_at = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
-    
-    def __repr__(self):
-        return f"<CodeChunk(id={self.id}, file_path='{self.file_path}')>"
-
-class AsyncCodeChunkRepository:
-    """
-    Async repository class for managing code chunks with embeddings.
-    Provides better performance for I/O-bound operations.
+    Retrieval database for codebases, webapp resources and documents
     """
     
     def __init__(self, database_url: str, pool_size: int = 20, max_overflow: int = 30):
@@ -65,7 +36,6 @@ class AsyncCodeChunkRepository:
             class_=AsyncSession, 
             expire_on_commit=False
         )
-    
     
     async def initialize_database(self):
         """Initialize database tables and extensions."""
@@ -129,14 +99,12 @@ class AsyncCodeChunkRepository:
             
             session.add_all(code_chunks)
             await session.commit()
-            
             # Refresh all objects to get their IDs
             for chunk in code_chunks:
                 await session.refresh(chunk)
-            
             return code_chunks
     
-    async def similarity_search(self, 
+    async def similarity_search_code_chunk(self, 
                                query_embedding: List[float], 
                                limit: int = 10,
                                language: Optional[str] = None,
@@ -146,8 +114,7 @@ class AsyncCodeChunkRepository:
         """
         async with self.get_session() as session:
             # Build query with similarity calculation
-            distance_expr = CodeChunk.embedding.cosine_distance(query_embedding)
-            
+            distance_expr = CodeChunk.embedding.cosine_distance(query_embedding) 
             query = select(
                 CodeChunk,
                 distance_expr.label('distance')
@@ -322,7 +289,7 @@ class AsyncCodeSearchService:
     High-level service for code search operations with concurrent processing.
     """
     
-    def __init__(self, repository: AsyncCodeChunkRepository):
+    def __init__(self, repository: RetrievalDatabaseConnector):
         self.repo = repository
     
     async def process_code_files_concurrently(self, 

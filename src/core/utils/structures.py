@@ -4,14 +4,13 @@ from typing import Dict, Literal
 from enum import Enum
 from dataclasses import dataclass
 
-from core.rag.code_indexer_db import AsyncCodeChunkRepository
+from core.rag.db_cruds import RetrievalDatabaseConnector
 from core.sandbox import Sandbox
 
 class CmdLog(BaseModel):
     cmd_input: str = Field(description="represents a shell's stdin", alias="stdin")
     cmd_output: str = Field(description="represents a shell's stdout", alias="stdout")
     cmd_error: str = Field(description="represents a shell's stderr", alias="stderr")
-
 
 class ShellRunner:
     """
@@ -48,16 +47,14 @@ class ShellDeps:
 @dataclass
 class WebappreconDeps:
     openai: AsyncOpenAI
-    rag: AsyncCodeChunkRepository
+    rag: RetrievalDatabaseConnector
     target: str
     shell_runner: ShellRunner
-
-    
 
 @dataclass
 class RagDeps:
     openai: AsyncOpenAI
-    rag: AsyncCodeChunkRepository
+    rag: RetrievalDatabaseConnector
     target: str
 
 class HttpMethod(Enum):
@@ -77,7 +74,6 @@ class RequestStruct:
     headers: Dict[str, str]
     content: str
 
-
 class Task(BaseModel):
     goal: str
     status: Literal['pending', 'failed', 'success']
@@ -94,4 +90,4 @@ class TargetDeps:
     path_crawl_data: str
     authentication_data: str
     openai: AsyncOpenAI
-    rag: AsyncCodeChunkRepository
+    rag: RetrievalDatabaseConnector

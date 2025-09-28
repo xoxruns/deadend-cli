@@ -4,10 +4,6 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from typing import Union, List
 
-from .agents.analyzer_agent import AnalyzerAgent
-from .agents.payload_agent import PayloadAgent
-from .agents.requester_agent import RequesterAgent, RequesterOutput
-from .agents.shell_agent import ShellAgent, ShellOutput
 from core.utils.structures import ShellDeps
 from .sandbox.sandbox import Sandbox
 from .utils.structures import Task, AIModel, TargetDeps
@@ -42,74 +38,74 @@ class TaskProcessor:
         self.model = model_openai
 
 
-    async def craft_requests(self, task: Task, usage_a: Usage, usage_limits: UsageLimits) -> List[str]:
-        if len(task.goal) == 0: 
-            print("No goal in this task.")
-        if task.status != "pending":
-            print("Task has already been processed.")
+    # async def craft_requests(self, task: Task, usage_a: Usage, usage_limits: UsageLimits) -> List[str]:
+    #     if len(task.goal) == 0: 
+    #         print("No goal in this task.")
+    #     if task.status != "pending":
+    #         print("Task has already been processed.")
 
-        analyzer_agent =  AnalyzerAgent(
-            model=self.model, 
-            webpage=None, 
-            output_type=List[str], 
-            tools=[]
-        )  
+    #     analyzer_agent =  AnalyzerAgent(
+    #         model=self.model, 
+    #         webpage=None, 
+    #         output_type=List[str], 
+    #         tools=[]
+    #     )  
 
-        task_plan_results = await analyzer_agent.run(
-            task.goal,
-            message_history=self.message_history,
-            deps=self.target_info,
-            usage=usage_a, 
-            usage_limits=usage_limits
-        ) 
+    #     task_plan_results = await analyzer_agent.run(
+    #         task.goal,
+    #         message_history=self.message_history,
+    #         deps=self.target_info,
+    #         usage=usage_a, 
+    #         usage_limits=usage_limits
+    #     ) 
 
-        return task_plan_results.output
+    #     return task_plan_results.output
 
-    async def analyze_requests(self, payloads: List[str], usage_a: Usage, usage_limits: UsageLimits) -> RequesterOutput:
-        analysis = []
-        requester_agent = RequesterAgent(
-                model=self.model, 
-                deps_type=str, 
-                target_information=self.target_info.target, 
-                zap_api_key=self.zap_api_key
-            )
+#     async def analyze_requests(self, payloads: List[str], usage_a: Usage, usage_limits: UsageLimits) -> RequesterOutput:
+#         analysis = []
+#         requester_agent = RequesterAgent(
+#                 model=self.model, 
+#                 deps_type=str, 
+#                 target_information=self.target_info.target, 
+#                 zap_api_key=self.zap_api_key
+#             )
         
 
-        response = await requester_agent.run(
-                user_prompt=f"""From the following output extract the requests and 
-send them to analyze the response. You should have everything to build a valid request 
-with the right host and information :
-{str(payloads)} 
-The previous runs are : 
-{self.agent_results_context}            
-""", 
-                deps=str(payloads),
-                message_history=self.message_history,
-                usage=usage_a, 
-                usage_limits=usage_limits
-        )
-        analysis.append(response.output)
-        self.agent_results_context += str(analysis)
-        return analysis
+#         response = await requester_agent.run(
+#                 user_prompt=f"""From the following output extract the requests and 
+# send them to analyze the response. You should have everything to build a valid request 
+# with the right host and information :
+# {str(payloads)} 
+# The previous runs are : 
+# {self.agent_results_context}            
+# """, 
+#                 deps=str(payloads),
+#                 message_history=self.message_history,
+#                 usage=usage_a, 
+#                 usage_limits=usage_limits
+#         )
+#         analysis.append(response.output)
+#         self.agent_results_context += str(analysis)
+#         return analysis
     
-    async def shell_execute(self, sandbox: Sandbox, command_analysis: str, usage_a: Usage, usage_limits: UsageLimits) -> ShellOutput:
+    # async def shell_execute(self, sandbox: Sandbox, command_analysis: str, usage_a: Usage, usage_limits: UsageLimits) -> ShellOutput:
         
-        shell_agent = ShellAgent(
-            model=self.model,
-            deps_type=ShellDeps,
-            context_history=self.agent_results_context
-        )
+    #     shell_agent = ShellAgent(
+    #         model=self.model,
+    #         deps_type=ShellDeps,
+    #         context_history=self.agent_results_context
+    #     )
 
-        deps = ShellDeps(
-            sandbox=sandbox
-        )
+    #     deps = ShellDeps(
+    #         sandbox=sandbox
+    #     )
 
-        response = await shell_agent.run(
-            user_prompt=command_analysis, 
-            deps=deps, message_history="", 
-            usage=usage_a, 
-            usage_limits=usage_limits
-        )
-        return response
+    #     response = await shell_agent.run(
+    #         user_prompt=command_analysis, 
+    #         deps=deps, message_history="", 
+    #         usage=usage_a, 
+    #         usage_limits=usage_limits
+    #     )
+    #     return response
 
     

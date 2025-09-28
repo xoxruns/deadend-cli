@@ -1,18 +1,16 @@
 Screen {
     layout: grid;
-    height: 100%;
     overflow-y: hidden;
     padding-left: 2;
     padding-right: 2;
+    width: 100%;
 
 }
+
 
 ChatInterface {
     height: auto;
-    row-span: 9;
 }
-
-
 
 PromptInterface .prompt {
     width: auto;
@@ -22,20 +20,13 @@ PromptInterface .prompt {
 .input_prompt {
     width: 95%;
     text-overflow: "fold";
-    background: transparent;
     border: none;
 
-}
-
-TextArea {
-    border: none;
-    background: transparent;
 }
 
 PromptInterface  {
     border: gray round;
     color: gray;
-    row-span: 1;
     width: auto;
 }
 

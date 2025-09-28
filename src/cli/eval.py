@@ -58,7 +58,7 @@ async def eval_interface(
         exit()
     
     # Monitoring 
-    logfire.configure()
+    logfire.configure(scrubbing=False)
     logfire.instrument_pydantic_ai()
 
     # adding automatic build and ask prompt 

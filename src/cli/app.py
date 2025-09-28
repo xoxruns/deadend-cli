@@ -22,4 +22,4 @@ class DeadendApp(App):
 
 if __name__ == "__main__":
     app = DeadendApp()
-    app.run()
+    app.run(inline=True)

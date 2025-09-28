@@ -6,7 +6,6 @@ from core.utils.structures import RagDeps
 
 async def webapp_code_rag(context: RunContext[RagDeps], search_query: str) -> str:
     res = ""
-
     if len(context.deps.target) > 1:
         search_query += '\n The target supplied is: ' + context.deps.target
     
@@ -20,7 +19,7 @@ async def webapp_code_rag(context: RunContext[RagDeps], search_query: str) -> st
     )
     embedding = embedding.data[0].embedding
 
-    results = await context.deps.rag.similarity_search(
+    results = await context.deps.rag.similarity_search_code_chunk(
         query_embedding=embedding, 
         limit=5
     )

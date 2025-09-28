@@ -1,12 +1,14 @@
 from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
 import docker
+import os
+import mimetypes
 
 from src.cli.console import console_printer
 from core import Config
 from core.models import AIModel
 from core.sandbox import Sandbox
-from core.rag.code_indexer_db import AsyncCodeChunkRepository
+from core.rag.db_cruds import RetrievalDatabaseConnector
 from core.tools.code_indexer import SourceCodeIndexer
 from core.context.context_engine import ContextEngine
 from core.utils.structures import ShellDeps, ShellRunner, WebappreconDeps
@@ -23,25 +25,50 @@ from core.agents import (
 # TODO; Handling message history to be able to use it in a better way
 MAX_ITERATION = 10
 
+def is_binary_file(file_path):
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type is not None and mime_type.startswith('application/') or mime_type == 'image/svg+xml':
+        return True
+    else:
+        return False
+
 class WorflowRunner:
     config: Config
     model: AIModel
-    code_indexer_db: AsyncCodeChunkRepository
+    code_indexer_db: RetrievalDatabaseConnector
     sandbox: Sandbox
     context: ContextEngine = ContextEngine()
     goal_achieved: bool = False
+    assets_folder: str
     
     def __init__(
             self, 
             model: AIModel, 
             config: Config, 
-            code_indexer_db: AsyncCodeChunkRepository,
-            sandbox: Sandbox | None
+            code_indexer_db: RetrievalDatabaseConnector,
+            sandbox: Sandbox | None, 
         ):
         self.config = config
         self.model = model
         self.code_indexer_db = code_indexer_db  
         self.sandbox = sandbox
+
+    def _set_assets(self, assets_folder: str): 
+        self.assets_folder = assets_folder
+
+    def add_assets_to_context(self, assets_folder: str):
+        self._set_assets(assets_folder=assets_folder)
+        
+        for root, dir, files in os.walk(self.assets_folder): 
+            for file in files:
+                file = root + "/" + file
+                if not is_binary_file(file):
+                    with open(file=file) as file_asset:
+                        try:
+                            file_content = file_asset.read()
+                        except Exception:
+                            pass
+                    self.context.add_asset_file(file, file_content)
 
     def init_webtarget_indexer(self, target: str):
         self.target = target

@@ -14,10 +14,10 @@ from pydantic_ai.usage import Usage, UsageLimits
 
 from core import Config, init_rag_database
 from core.sandbox.sandbox_manager import SandboxManager
-from core.agents.requester_agent import RequesterOutput
 from core.utils.structures import Task
 from .textual_prompt import prompt_with_textual
 from core.agents.planner import Planner
+from core.agents.webapp_recon_agent import RequesterOutput
 from core.task_processor import TaskProcessor
 from core.tools.code_indexer import SourceCodeIndexer
 from core.utils.structures import TargetDeps
@@ -135,7 +135,6 @@ async def chat_interface(config: Config, sandbox_manager: SandboxManager, prompt
             
             # chunking and embedding the code 
             chat_interface.console.print(f"Chunking the webpage's target source code.", end="\r")
-            
             
             code_sections = await chat_interface.wait_response(
                 func=code_indexer.embed_webpage, 

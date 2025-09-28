@@ -25,11 +25,11 @@ class Config:
     """
     # Models 
     openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
-    openai_model_name : str | None = os.getenv("OPENAI_MODEL", "o4-mini-2025-04-16")
+    openai_model_name : str | None = os.getenv("OPENAI_MODEL", "gpt-4o-mini-2024-07-18")
     anthropic_api_key: str | None = os.getenv("ANTHROPIC_API_KEY")
     anthropic_model_name : str | None = os.getenv("ANTHROPIC_MODEL")
     gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
-    gemini_model_name : str | None = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    gemini_model_name : str | None = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
 
     # Embedding model
     embedding_model: str | None  = os.getenv("EMBEDDING_MODEL")

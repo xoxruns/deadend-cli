@@ -2,12 +2,7 @@ from pydantic import BaseModel
 from pydantic_ai import Tool
 from pydantic_ai.usage import Usage, UsageLimits
 from typing import Any
-from dataclasses import dataclass
-from openai import AsyncOpenAI
-from core.rag.code_indexer_db import AsyncCodeChunkRepository
-from .shell_agent import ShellRunner
 from .factory import AgentRunner
-from core.sandbox import Sandbox
 from core.models import AIModel
 from core.tools import (
     sandboxed_shell_tool, 

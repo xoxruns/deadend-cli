@@ -6,7 +6,7 @@ from pydantic_evals.evaluators import Evaluator
 from src.cli.console import console_printer
 from core.models import AIModel
 from core import Config
-from core.rag.code_indexer_db import AsyncCodeChunkRepository
+from core.rag.db_cruds import RetrievalDatabaseConnector
 from core.sandbox import Sandbox
 from core.workflow_runner import WorflowRunner
 
@@ -20,6 +20,7 @@ class EvalMetadata(BaseModel):
     name: str = Field(..., description="Name of the challenge")
     categories: list[str] = Field(..., description="Challenge categories")
     difficulty: str = Field(..., description="Challenge difficulty")
+    assets_path: str = Field(..., description="Path to the different challenge assets.")
     target_host: str = Field(..., description="Target host, could be a hostname, IP adress...")
     soft_prompt: str = Field(..., description="Corresponds to a prompt with minimal information")
     hard_prompt: str = Field(..., description="prompt that adds more information to the target")
@@ -31,7 +32,7 @@ async def eval_agent(
         model: AIModel, 
         # evaluators: list[Evaluator], 
         config: Config, 
-        code_indexer_db: AsyncCodeChunkRepository, 
+        code_indexer_db: RetrievalDatabaseConnector, 
         sandbox: Sandbox,
         eval_metadata: EvalMetadata, 
         hard_prompt: bool,
@@ -56,13 +57,14 @@ async def eval_agent(
         model=model, 
         config=config, 
         code_indexer_db=code_indexer_db, 
-        sandbox=sandbox
+        sandbox=sandbox, 
     )
+
+    workflow_agent.add_assets_to_context(eval_metadata.assets_path)
+
     # TODO: changing the handling of this 
     # by for example adding description templates with jinja2
     available_agents = {
-        # 'requester_agent': 'Forms and sends raw http requests and exploitation playloads',
-        # 'shell_agent': 'Agent with access to a terminal so send recon and exploitation commands like a hacker.',
         'webapp_recon': "Expert cybersecurity agent that enumerates a web target to understand the architecture and understand the endpoints and where an attack vector could be tested.",
         'planner_agent': 'Expert cybersecurity agent that plans what is the next step to do', 
         'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
@@ -92,23 +94,20 @@ async def eval_agent(
             code_chunks.append(chunk)
         insert = await code_indexer_db.batch_insert_code_chunks(code_chunks_data=code_chunks)
         console_printer.print("Sync completed.", end="\r")
-    # if with_context_engine:
 
     # if with_knowledge_base:
+
+    # adding assets to context 
+    workflow_agent.context.add_assets_to_context()
 
     # case if not guided, i.e. not using subtasks 
     if not guided:
         judge_output = await workflow_agent.start_workflow(prompt, eval_metadata.target_host)
-        # console_printer.print(str(judge_output))
     else: 
         for subtask in eval_metadata.subtasks: 
             subtask_prompt = f"{subtask.subtask}\n{subtask.question}\n{subtask.hints}"
             judge_output = await workflow_agent.start_workflow(subtask_prompt, target=eval_metadata.target_host)
-            # console_printer.print(str(judge_output))
-        
 
-
-    
 async def eval_all_models(models: list[AIModel], evaluators: list[Evaluator], agent: WorflowRunner, eval_metadata_path: str, output_report: str):
     """
     Eval function all models
