@@ -20,7 +20,6 @@ class CodeChunker:
     def __init__(self, encoding: str = "text-embedding-3-small") -> None:
         self.encoding = encoding
 
-
     def chunk(self, content: str, language: str,  token_limit: int) -> dict[str, str] | None:
         code_parser = CodeParser(language)
         code_parser.parse_code(code_str=content)
@@ -53,8 +52,6 @@ class CodeChunker:
                     new_breakpoints.append(line_breakpoint)
             
             breakpoints = sorted(set(new_breakpoints))
-
-
             # Chunking part
             token_count = 0 
             line_number = 0
@@ -62,12 +59,9 @@ class CodeChunker:
             chunk_count = 1
             current_chunk = ""
             start_line = 0
-
-
             while line_number < len(all_lines):
                 line = all_lines[line_number]
                 new_tokens = count_tokens(line, self.encoding)
-
                 # case where the tokens we have and the new lines tokens are above the 
                 # token limit
                 if token_count + new_tokens > token_limit:
@@ -79,12 +73,9 @@ class CodeChunker:
                     if stop_line == start_line and line_number not in breakpoints:
                         token_count += new_tokens
                         line_number += 1
-                    
                     elif stop_line == start_line and line_number == stop_line:
                         token_count += new_tokens
                         line_number += 1
-
-
                     elif stop_line == start_line and line_number in breakpoints:
                         current_chunk = '\n'.join(all_lines[start_line:stop_line])
                         if current_chunk.strip():
@@ -93,7 +84,6 @@ class CodeChunker:
                         token_count = 0
                         start_line = line_number
                         line_number += 1
-                    
                     else:
                         current_chunk = '\n'.join(all_lines[start_line:stop_line])
                         if current_chunk.strip():
@@ -136,9 +126,9 @@ class CodeParser:
         if self.tree is None:
             return None
         return self.tree
+    
     def _extract_node_lines(self, node: Node, language: str):
         pass
-
 
     def extract_lines_for_patterns(self, content: str, patterns: dict):
         """
@@ -166,9 +156,7 @@ class CodeParser:
             raise NodeError("Tree not found.")
 
         root_node = self.tree.root_node
-
         nodes_patterns = self._extract_nodes_patterns(root_node,  patterns=patterns)
-
         line_numbers_matching_patterns = {}
 
         for node, pattern in nodes_patterns:
@@ -181,7 +169,6 @@ class CodeParser:
         patterns_lines = []
         for _, line_numbers in line_numbers_matching_patterns.items():
             patterns_lines.extend(line_numbers)
-        
         return patterns_lines
     
     def _extract_nodes_patterns(self, node: Node, patterns: dict) -> List[Tuple[Node, str]]:
@@ -191,7 +178,7 @@ class CodeParser:
 
         for child in node.children:
             pattern_matches.extend(self._extract_nodes_patterns(node=child, patterns=patterns))
-        
+
         return pattern_matches
     
 

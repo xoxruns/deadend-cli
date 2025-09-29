@@ -1,6 +1,5 @@
 import docker
 from docker.errors import ImageNotFound, NotFound
-import uuid 
 import docker.errors
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -20,7 +19,7 @@ class Sandbox(BaseModel):
     """
     container_id : str | None = None
     docker_image: str = ""
-    docker_volume: str = ""
+    fs_volume: str = ""
     status: SandboxStatus = SandboxStatus.CREATED
     last_command: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
@@ -35,18 +34,16 @@ class Sandbox(BaseModel):
         self._docker_client = docker_client
 
     def start(self, container_image: str, volume_path: str | None = None, start_process: str = "/bin/bash"):
-
-        if volume_path == None:
-            volumes = None
-        else:
-            volumes = [volume_path]
+        self.fs_volume = volume_path
         try:
             self.status = SandboxStatus.RUNNING
             image = self._docker_client.images.get(container_image)
 
             container = self._docker_client.containers.run(
                 image=image,
-                volumes=volumes, 
+                volumes={
+                    self.fs_volume: {'bind':'/challenge', 'mode':'ro'}
+                }, 
                 # runtime='runsc',
                 network="shared_net",
                 tty=True,
@@ -57,7 +54,6 @@ class Sandbox(BaseModel):
             print(container)
             self.container_id = container.id 
             self.docker_image = container_image
-            self.docker_volume = volume_path
             self.status = SandboxStatus.RUNNING
             return container
         except ImageNotFound:

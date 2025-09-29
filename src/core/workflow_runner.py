@@ -15,8 +15,6 @@ from core.utils.structures import ShellDeps, ShellRunner, WebappreconDeps
 from core.agents import (
     AgentRunner, 
     Planner, PlannerAgent, PlannerOutput, RagDeps,
-    ShellAgent, ShellOutput,
-    RequesterAgent, RequesterOutput, 
     RouterAgent,RouterOutput, 
     JudgeAgent, JudgeOutput,
     WebappReconAgent, 
@@ -152,11 +150,11 @@ class WorflowRunner:
                     deps_type=WebappreconDeps, 
                     target_information=self.context.target
                 )
-            case "planner_agent":
-                return PlannerAgent(
-                    self.model, 
-                    output_type=PlannerOutput,
-                )
+            # case "planner_agent":
+            #     return PlannerAgent(
+            #         self.model, 
+            #         output_type=PlannerOutput,
+            #     )
             case _:
                 self.context.add_not_found_agent(agent_name=agent_name)
                 return RouterAgent(
@@ -214,13 +212,13 @@ class WorflowRunner:
         self.context.add_agent_response(agent_response)
         return agent_response
     
-    async def start_workflow(self, prompt:str, target: str):
+    async def start_workflow(self, prompt:str, target: str, validation_type: str, validation_format: str):
         
         # Plan the tasks (raise tasks error if empty task and rerun 2 more times if still empty)
         tasks = await self.plan_tasks(goal=prompt, target=target)
         console_printer.print(tasks)
 
-        judge_agent = JudgeAgent(self.model, None, [])
+        judge_agent = JudgeAgent(self.model, None, [], validation_type=validation_type, validation_format=validation_format)
         usage_judge = Usage()
         usage_limits_judge = UsageLimits()
         str_judge = ""

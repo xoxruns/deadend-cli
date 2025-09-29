@@ -7,6 +7,13 @@ Use the tools :
 - gobuster for fuzzing a specific target
 - fuff for fuzzing targets, headers...
 
+[read source code]
+If the source code is available, it will appear in the directory /challenge. 
+You can use the following commands :
+- tree : to read the structure of the code
+- cat filename : to read the content of a specific file
+
+
 [static analysis tools]
 The static analysis tools should only be used if you have access to a specific code file that you can open 
 and put in context. 
@@ -17,3 +24,4 @@ DO NOT USE any other tools to keep it concise.
 For example, if your goal includes a web target enumeration, you should first look in the context given, if the enumeration has already been done. 
 if the endpoints have been retrieved or are in context, you can validate them with curl. 
 You can also use the fuzzing tools for discovering more endpoints if needed. 
+DO NOT RUN python code with this tool.

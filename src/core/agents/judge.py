@@ -14,11 +14,13 @@ class JudgeAgent(AgentRunner):
     """
     Judge Agent 
     """
-    def __init__(self, model, deps_type, tools):
+    def __init__(self, model, deps_type, tools, validation_type: str, validation_format: str):
         if len(tools) == 0:
             judge_instructions = render_agent_instructions(
                 "judge", 
                 tools={}, 
+                validation_type=validation_type, 
+                validation_format=validation_format
                 )
         self._set_description()
         super().__init__(name="judge", model=model, instructions=judge_instructions, deps_type=deps_type, output_type=JudgeOutput, tools=[])

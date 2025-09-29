@@ -7,7 +7,10 @@ The goal is specified by the user, depending on what he wants.
 By applying a reasoning step by step and planning, you return a response based on what is given by specifying, the reasoning
 made, if the goal is achieved and the solution if the goal is achieved. Otherwise the solution is empty.
 The overall context and conversation is given below.
-
+To validate if it is the correct answer, a validation type and format is given. 
+In the information given, you verify if it corresponds : 
+{{validation_type}} : {{validation_format}} 
+If it doesn't corresponds, it means that the right answer is not found yet and more research should be done. 
 {% for tool_name, tool_description in tools.items() %}
 - {{tool_name}} : {{tool_description}}
 {% endfor %}

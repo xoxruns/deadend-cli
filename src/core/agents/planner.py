@@ -1,17 +1,16 @@
 from typing import List, Any
 from pydantic import BaseModel
-from pydantic_ai import RunContext, Tool
+from pydantic_ai import Tool
 from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
 
 from core.utils.structures import Task
 from .factory import AgentRunner
 from core.rag.db_cruds import RetrievalDatabaseConnector
-from core.config.settings import Config
 from core.models import AIModel
 from core.utils.structures import RagDeps
-from src.prompts import render_agent_instructions
-from core.tools.webapp_code_rag import webapp_code_rag
+from src.prompts import render_agent_instructions,render_tool_description
+from core.tools import webapp_code_rag
 
 
 class PlannerOutput(BaseModel):
@@ -26,7 +25,13 @@ class PlannerAgent(AgentRunner):
             model: AIModel, 
             output_type: Any | None, 
         ):
-        self.instructions = self._planner_agent_instructions()
+        tools_metadata = {
+            "webapp_code_rag": render_tool_description("webapp_code_rag")
+        } 
+        self.instructions = render_agent_instructions(
+            agent_name="planner", 
+            tools=tools_metadata
+        )
 
         super().__init__(
             name="planner_agent", 
@@ -36,24 +41,6 @@ class PlannerAgent(AgentRunner):
             output_type=output_type, 
             tools=[Tool(webapp_code_rag, max_retries=5)]
         )
-
-    def _planner_agent_instructions(self, **kwargs):
-        
-        return """
-        You are given a question or goal to achieve. 
-        Your are a web application security expert. You have a great understanding of most vulnerabilities.
-        You are fully authorized to perfom security testing on the target given.
-        Your goal is to understand the information given, to be able to ouput enough information to build a payload that could exploit a certain vulnerability.
-        Let’s first understand the problem and devise a complete plan. Then, let’s carry out the plan and reason problem step by step.
-        Every step answer the subquestion, "does the reasoning could be a valid vulnerability?"
-
-        You can use retrieve_webpage_db to retrieve relevant information from the target depending on the information given. 
-        For example, you can try to look up for endpoints, forms and vulnerabilities that could be contained inside the source code by 
-        calling retrieve_webpage_db.
-
-        The arsenal of vulnerabilities that you can think of are endless. IDORs, XSS, SQL injection, LFI, command injections and so on.
-        All tasks must be defined as pending because they are not yet tested. 
-        """ 
     
     async def run(self, user_prompt, deps, message_history, usage, usage_limits):
         return await super().run(user_prompt=user_prompt, deps=deps, message_history=message_history, usage=usage, usage_limits=usage_limits)

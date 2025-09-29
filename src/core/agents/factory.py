@@ -3,6 +3,11 @@ from pydantic_ai.usage import Usage, UsageLimits
 from typing import Any
 
 from src.core.models import AIModel
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 class AgentRunner: 
     """
@@ -30,7 +35,7 @@ class AgentRunner:
         )
         self.response = None
         
-
+    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
     async def run(self, user_prompt, deps, message_history, usage: Usage | None, usage_limits: UsageLimits | None):
         # Normal running 
         return await self.agent.run(

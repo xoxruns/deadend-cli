@@ -15,14 +15,18 @@ class SandboxManager:
         self.sandboxes: Dict[uuid.UUID, Sandbox] = {}
 
 
-    def create_sandbox(self, image: str = "ubuntu:latest"):
+    def create_sandbox(
+            self, 
+            image: str = "ubuntu:latest", 
+            volume_path: str | None = None
+        ):
         sandbox_id = uuid.uuid4()
 
         new_sb = Sandbox(
             docker_client=self.docker_client,
             id=sandbox_id
         )
-        new_sb.start(container_image=image)
+        new_sb.start(container_image=image, volume_path=volume_path)
         
         self.sandboxes[sandbox_id] = new_sb
         return sandbox_id

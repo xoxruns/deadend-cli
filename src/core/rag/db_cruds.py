@@ -353,11 +353,11 @@ class AsyncCodeSearchService:
 # Example usage
 async def async_example_usage():
     """
-    Example of how to use the AsyncCodeChunkRepository.
+    Example of how to use the RetrievalDatabaseConnector.
     """
     # Initialize repository
     DATABASE_URL = "postgresql://username:password@localhost/database"
-    repo = AsyncCodeChunkRepository(DATABASE_URL)
+    repo = RetrievalDatabaseConnector(DATABASE_URL)
     
     # Initialize database
     await repo.initialize_database()

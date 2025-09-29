@@ -1,5 +1,4 @@
 from typing import Dict
-
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.google import GoogleModel
@@ -39,7 +38,6 @@ class ModelRegistry:
             self._models['gemini'] = GoogleModel(
                 model_name=gemini_settings.model_name,
                 provider=GoogleProvider(api_key=gemini_settings.api_key),
-                
             )
         
     def get_model(self, provider: str = 'openai') -> AIModel:

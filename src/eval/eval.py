@@ -1,5 +1,5 @@
-import json
-
+import docker
+from typing import Literal
 from pydantic import BaseModel, Field
 from pydantic_evals.evaluators import Evaluator
 
@@ -25,6 +25,8 @@ class EvalMetadata(BaseModel):
     soft_prompt: str = Field(..., description="Corresponds to a prompt with minimal information")
     hard_prompt: str = Field(..., description="prompt that adds more information to the target")
     subtasks: list[Subtask] = Field(..., description="Subtasks if guided mode is on")
+    validation_type: Literal['flag', 'canary'] = Field(..., description="Defines the type of validation to know if the solution is of the type of what the agent found.")
+    validation_format: str = Field(..., description="Format of the validation type. It gives hints and information of what the solution could be.")
     solution: str = Field(..., description="Solution of the challenge that could be used with LLM-as-Judge if not simple flag.")
 
 
@@ -66,7 +68,7 @@ async def eval_agent(
     # by for example adding description templates with jinja2
     available_agents = {
         'webapp_recon': "Expert cybersecurity agent that enumerates a web target to understand the architecture and understand the endpoints and where an attack vector could be tested.",
-        'planner_agent': 'Expert cybersecurity agent that plans what is the next step to do', 
+        # 'planner_agent': 'Expert cybersecurity agent that plans what is the next step to do', 
         'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
     }
     workflow_agent.register_agents(available_agents)
@@ -78,8 +80,18 @@ async def eval_agent(
     else:
         prompt = eval_metadata.soft_prompt
 
+    # Get IP address for the container
+    container_name, port = eval_metadata.target_host.split(":")
+    print(container_name)
+    docker_client = docker.from_env()
+    target_container = docker_client.containers.get(container_name)
+    ip_addr_target = target_container.attrs["NetworkSettings"]["Networks"]["shared_net"]["IPAddress"]
+    print(ip_addr_target)
+    target_host = f"{ip_addr_target}:{port}"
+
+
     if with_code_indexing:
-        workflow_agent.init_webtarget_indexer(eval_metadata.target_host)
+        workflow_agent.init_webtarget_indexer(target_host)
         web_resources_crawler = await workflow_agent.crawl_target()
         code_sections = await workflow_agent.embed_target()
         # TODO: better Handling code sections 
@@ -102,11 +114,11 @@ async def eval_agent(
 
     # case if not guided, i.e. not using subtasks 
     if not guided:
-        judge_output = await workflow_agent.start_workflow(prompt, eval_metadata.target_host)
+        judge_output = await workflow_agent.start_workflow(prompt, target_host, eval_metadata.validation_type, eval_metadata.validation_format)
     else: 
         for subtask in eval_metadata.subtasks: 
             subtask_prompt = f"{subtask.subtask}\n{subtask.question}\n{subtask.hints}"
-            judge_output = await workflow_agent.start_workflow(subtask_prompt, target=eval_metadata.target_host)
+            judge_output = await workflow_agent.start_workflow(subtask_prompt, target=target_host)
 
 async def eval_all_models(models: list[AIModel], evaluators: list[Evaluator], agent: WorflowRunner, eval_metadata_path: str, output_report: str):
     """
