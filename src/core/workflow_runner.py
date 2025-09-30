@@ -11,7 +11,7 @@ from core.sandbox import Sandbox
 from core.rag.db_cruds import RetrievalDatabaseConnector
 from core.tools.code_indexer import SourceCodeIndexer
 from core.context.context_engine import ContextEngine
-from core.utils.structures import ShellDeps, ShellRunner, WebappreconDeps
+from core.utils.structures import ShellRunner, WebappreconDeps
 from core.agents import (
     AgentRunner, 
     Planner, PlannerAgent, PlannerOutput, RagDeps,
@@ -30,7 +30,7 @@ def is_binary_file(file_path):
     else:
         return False
 
-class WorflowRunner:
+class WorkflowRunner:
     config: Config
     model: AIModel
     code_indexer_db: RetrievalDatabaseConnector
@@ -40,18 +40,18 @@ class WorflowRunner:
     assets_folder: str
     
     def __init__(
-            self, 
-            model: AIModel, 
-            config: Config, 
+            self,
+            model: AIModel,
+            config: Config,
             code_indexer_db: RetrievalDatabaseConnector,
-            sandbox: Sandbox | None, 
+            sandbox: Sandbox | None,
         ):
         self.config = config
         self.model = model
-        self.code_indexer_db = code_indexer_db  
+        self.code_indexer_db = code_indexer_db
         self.sandbox = sandbox
 
-    def _set_assets(self, assets_folder: str): 
+    def _set_assets(self, assets_folder: str):
         self.assets_folder = assets_folder
 
     def add_assets_to_context(self, assets_folder: str):

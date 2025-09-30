@@ -50,6 +50,10 @@ class ModelRegistry:
     def list_configured_providers(self) -> list[str]:
         return list(self._models.keys())
     
+    def has_any_model(self) -> bool:
+        """Return True if at least one model provider is configured."""
+        return len(self._models) > 0
+    
     # Evaluation
     def get_all_models(self) -> Dict[str, AIModel]:
         return self._models.copy()

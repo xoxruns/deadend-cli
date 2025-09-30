@@ -2,20 +2,44 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+import toml
+
+# Load cached CLI configuration first (if present), then environment variables
+_CACHE_TOML_PATH = Path.home() / ".cache" / "deadend" / "config.toml"
+_CACHE_CONFIG: dict[str, str] = {}
+
+def _load_cache_toml() -> dict[str, str]:
+    """Load cached configuration from TOML using the toml library."""
+    if not _CACHE_TOML_PATH.exists():
+        return {}
+    try:
+        return toml.load(_CACHE_TOML_PATH)
+    except Exception:
+        return {}
+
+_CACHE_CONFIG = _load_cache_toml()
+
+def _cfg(key: str, default: str | None = None) -> str | None:
+    """Return config value preferring cache TOML, then environment, else default."""
+    if key in _CACHE_CONFIG and _CACHE_CONFIG[key] != "":
+        return _CACHE_CONFIG[key]
+    return os.getenv(key, default)
 
 
 class ModelConfig(BaseSettings):
+    """Model Config"""
     api_key: str
     model_name: str
     base_url: str | None = None
 
 class ModelSettings(BaseSettings):
+    """Model settings"""
       # Model provider configs
-      openai: ModelConfig | None = None
-      anthropic: ModelConfig | None = None
-      gemini: ModelConfig | None = None
-      # Default model to use
-      default_provider: str = "openai"
+    openai: ModelConfig | None = None
+    anthropic: ModelConfig | None = None
+    gemini: ModelConfig | None = None
+    # Default model to use
+    default_provider: str = "openai"
 
 
 class Config:
@@ -23,26 +47,25 @@ class Config:
     Configuration class that loads environment variables from a .env file or from 
     environment variables 
     """
-    # Models 
-    openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
-    openai_model_name : str | None = os.getenv("OPENAI_MODEL", "gpt-4o-mini-2024-07-18")
-    anthropic_api_key: str | None = os.getenv("ANTHROPIC_API_KEY")
-    anthropic_model_name : str | None = os.getenv("ANTHROPIC_MODEL")
-    gemini_api_key: str | None = os.getenv("GEMINI_API_KEY")
-    gemini_model_name : str | None = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+    # Models
+    openai_api_key: str | None = _cfg("OPENAI_API_KEY")
+    openai_model_name : str | None = _cfg("OPENAI_MODEL", "gpt-4o-mini-2024-07-18")
+    anthropic_api_key: str | None = _cfg("ANTHROPIC_API_KEY")
+    anthropic_model_name : str | None = _cfg("ANTHROPIC_MODEL")
+    gemini_api_key: str | None = _cfg("GEMINI_API_KEY")
+    gemini_model_name : str | None = _cfg("GEMINI_MODEL", "gemini-2.5-pro")
 
     # Embedding model
-    embedding_model: str | None  = os.getenv("EMBEDDING_MODEL")
+    embedding_model: str | None  = _cfg("EMBEDDING_MODEL")
 
     # Database
-    db_url: str | None = os.getenv("DB_URL")
-    
+    db_url: str | None = _cfg("DB_URL")
     # Tools
-    zap_api_key: str | None = os.getenv("ZAP_PROXY_API_KEY")
+    zap_api_key: str | None = _cfg("ZAP_PROXY_API_KEY")
 
     # Application settings
-    app_env: str = os.getenv("APP_ENV", "development")
-    log_level: str = os.getenv("LOG_LEVEL", "INFO")
+    app_env: str = _cfg("APP_ENV", "development") or "development"
+    log_level: str = _cfg("LOG_LEVEL", "INFO") or "INFO"
 
     @classmethod
     def configure(cls, env_file: str = ".env"):
@@ -62,6 +85,9 @@ class Config:
 
     @classmethod
     def get_models_settings(cls) -> ModelSettings:
+        """
+        Get all the models settings that are configured
+        """
         model_settings = ModelSettings()
 
         if cls.openai_api_key:
@@ -69,18 +95,15 @@ class Config:
                 api_key=cls.openai_api_key,
                 model_name=cls.openai_model_name if cls.openai_model_name else "gpt-4o"
             )
-        
         if cls.anthropic_api_key:
             model_settings.anthropic = ModelConfig(
                 api_key=cls.anthropic_api_key,
-                model_name=cls.anthropic_model_name if cls.anthropic_model_name else "claude-3-5-sonnet-20241022"
+                model_name=cls.anthropic_model_name if cls.anthropic_model_name \
+                    else "claude-3-5-sonnet-20241022"
             )
-
         if cls.gemini_api_key:
             model_settings.gemini = ModelConfig(
                 api_key=cls.gemini_api_key,
                 model_name=cls.gemini_model_name if cls.gemini_model_name else "gemini-2.5-flash",
-                # base_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"            
             )
-        
         return model_settings

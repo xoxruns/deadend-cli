@@ -69,8 +69,6 @@ class TaskProcessor:
 #                 target_information=self.target_info.target, 
 #                 zap_api_key=self.zap_api_key
 #             )
-        
-
 #         response = await requester_agent.run(
 #                 user_prompt=f"""From the following output extract the requests and 
 # send them to analyze the response. You should have everything to build a valid request 
@@ -107,5 +105,3 @@ class TaskProcessor:
     #         usage_limits=usage_limits
     #     )
     #     return response
-
-    

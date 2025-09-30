@@ -8,7 +8,7 @@ from core.models import AIModel
 from core import Config
 from core.rag.db_cruds import RetrievalDatabaseConnector
 from core.sandbox import Sandbox
-from core.workflow_runner import WorflowRunner
+from core.workflow_runner import WorkflowRunner
 
 class Subtask(BaseModel):
     subtask: str = Field(..., description="subtask step generalized")
@@ -55,7 +55,7 @@ async def eval_agent(
     Eval function
     """
 
-    workflow_agent = WorflowRunner(
+    workflow_agent = WorkflowRunner(
         model=model, 
         config=config, 
         code_indexer_db=code_indexer_db, 
@@ -120,12 +120,12 @@ async def eval_agent(
             subtask_prompt = f"{subtask.subtask}\n{subtask.question}\n{subtask.hints}"
             judge_output = await workflow_agent.start_workflow(subtask_prompt, target=target_host)
 
-async def eval_all_models(models: list[AIModel], evaluators: list[Evaluator], agent: WorflowRunner, eval_metadata_path: str, output_report: str):
+async def eval_all_models(models: list[AIModel], evaluators: list[Evaluator], agent: WorkflowRunner, eval_metadata_path: str, output_report: str):
     """
     Eval function all models
     """
     for model in models:
-        await eval_agent(model=model, evaluators=evaluators, agent=agent, eval_metadata_path=eval_metadata_path,output_report=output_report)
+        await eval_agent(model=model, evaluators=evaluators, eval_metadata_path=eval_metadata_path,output_report=output_report)
 
 
 def run_benchmark_script(run_script_path: str):

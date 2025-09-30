@@ -42,6 +42,7 @@ dependencies = [
     "textual>=3.5.0",
     "textual-dev>=1.7.0",
     "tiktoken>=0.9.0",
+    "toml>=0.10.2",
     "tree-sitter<0.22.0",
     "tree-sitter-css>=0.23.2",
     "tree-sitter-html>=0.23.2",

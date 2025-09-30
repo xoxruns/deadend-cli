@@ -8,12 +8,9 @@ class SandboxManager:
     """The sandbox manager is responsible of managing the sandboxes running 
     verifying the status and shutting down the sandbox
     """
-    
-
     def __init__(self):
         self.docker_client = docker.from_env()
         self.sandboxes: Dict[uuid.UUID, Sandbox] = {}
-
 
     def create_sandbox(
             self, 

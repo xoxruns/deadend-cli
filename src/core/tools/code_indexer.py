@@ -9,8 +9,6 @@ from src.core.rag.database import CodeSection
 from src.core.tools.web_resource_extractor import WebResourceExtractor
 from src.core.code_indexer.code_splitter import Chunker
 
-
-
 class SourceCodeIndexer:
     """
     The SourceCodeIndexer Object indexes a webpage source code 

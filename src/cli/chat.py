@@ -1,29 +1,42 @@
 import time
 import asyncio
 import sys
+from typing import Dict, List, Callable, Optional
+import logfire
 from rich.console import Console
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.box import ROUNDED
-from typing import Dict, List, Callable
-import logfire
-from openai import AsyncOpenAI
-from rich import print
 from rich.prompt import Prompt, Confirm
+from prompt_toolkit.application import Application
+from prompt_toolkit.widgets import TextArea, Frame, Label
+from prompt_toolkit.layout import Layout as PTKLayout
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.styles import Style
+from prompt_toolkit.layout.containers import HSplit
+ 
+
+from openai import AsyncOpenAI
+
 from pydantic_ai.usage import Usage, UsageLimits
 
-from core import Config, init_rag_database
+from core import Config, init_rag_database, sandbox_setup
 from core.sandbox.sandbox_manager import SandboxManager
 from core.utils.structures import Task
-from .textual_prompt import prompt_with_textual
 from core.agents.planner import Planner
 from core.agents.webapp_recon_agent import RequesterOutput
 from core.task_processor import TaskProcessor
 from core.tools.code_indexer import SourceCodeIndexer
 from core.utils.structures import TargetDeps
 from core.models import ModelRegistry
+from .console import console_printer
 
 class ChatInterface:
+    """Console chat interface utilities.
+
+    Provides convenience helpers to render outputs with Rich and to prompt
+    for user input inside a panel using Prompt Toolkit.
+    """
     def __init__(self, max_history: int = 50):
         self.console = Console()
         self.max_history = max_history
@@ -37,7 +50,17 @@ class ChatInterface:
         )
 
     async def wait_response(self, func: Callable, status: str, *args, **kwargs):
-        """Awaits response"""
+        """Run an async function while showing a live status spinner.
+
+        Args:
+            func: Awaitable/coroutine function to execute.
+            status: Status text to display alongside the spinner.
+            *args: Positional arguments forwarded to the function.
+            **kwargs: Keyword arguments forwarded to the function.
+
+        Returns:
+            Any: The result returned by the awaited function.
+        """
         response = ""
         start_time = time.time()
         with self.console.status(
@@ -58,12 +81,24 @@ class ChatInterface:
                     await update_task
                 except asyncio.CancelledError:
                     pass
-    
+ 
     def print_chat_response(self, message: str, agent_name: str):
+        """Print a simple agent message to the console.
+
+        Args:
+            message: Text content produced by the agent.
+            agent_name: Display name of the agent.
+        """
         # Panel(message, title=f"{agent_name}", border_style="magenta", box=ROUNDED)
         self.console.print(f"{agent_name}: {message}")
 
     def print_requester_response(self, output: List[RequesterOutput], title: str):
+        """Render Requester outputs inside a Rich panel.
+
+        Args:
+            output: Sequence of requester messages/responses.
+            title: Panel title.
+        """
         message = ""
         for msg in output:
             if msg.reasoning is not None:
@@ -71,7 +106,7 @@ class ChatInterface:
 [bold green]analysis    :[/bold green] {msg.reasoning}
 [bold green]status      :[/bold green] {msg.state}
 [bold green]raw response:[/bold green] 
-        {msg.raw_response}    
+        {msg.raw_response}
                 """
             else:
                 text = str(msg)
@@ -79,45 +114,154 @@ class ChatInterface:
         self.console.print(Panel(message, title=title, border_style="green", box=ROUNDED))
 
     def print_planner_response(self, output: List[Task], title: str):
-        message = ""
-        for i in range(0,len(output)):
-            task=output[i]
-        # goal = task.goal
-            resp = task.output
-        # status = task.status
+        """Render a list of planner tasks inside a Rich panel.
 
+        Args:
+            output: Tasks produced by the planner.
+            title: Panel title.
+        """
+        message = ""
+
+        for i in enumerate(output):
+            task=output[i]
+            # goal = task.goal
+            resp = task.output
+            # status = task.status
             formatted_task = f"""
-[bold magenta]step {i+1} :[/bold magenta] 
+[bold magenta]step {i+1} :[/bold magenta]
     {resp}
 """
             message += formatted_task
         self.console.print(Panel(message, title=title, border_style="red", box=ROUNDED))
 
     def startup(self):
+        """Print startup banner and basic usage help."""
         self.console.print("[bold green] Starting Agent Mode: Chat interface.[/bold green]")
         self.console.print("Type '/help' for commands, '/quit' to exit.")
 
-    def prompt_user(self, title: str, message: str):
-        """Panel for prompt user using Textual for interactive input."""
+    def ask_with_panel(
+            self,
+            title: str = "Prompt",
+            prompt_text: str = ">>> "
+        ) -> Optional[str]:
+        """Render a Rich panel around the prompt label, then read input.
+
+        This uses Rich for the static panel and falls back to a plain
+        one-line input. For an in-panel editable input, use
+        `ask_with_ptk_panel` instead.
+
+        Args:
+            title: Panel title.
+            prompt_text: Prompt label displayed inside the panel.
+
+        Returns:
+            The string entered by the user, or None if cancelled.
+        """
         try:
-            user_input = prompt_with_textual(title, message)
-            return user_input
+            self.console.print(
+                Panel.fit(
+                    f"[bold cyan]{prompt_text}[/bold cyan]",
+                    title=title,
+                    border_style="cyan",
+                    box=ROUNDED,
+                )
+            )
+            return Prompt.ask("")
         except KeyboardInterrupt:
             return None
-        
 
-async def chat_interface(config: Config, sandbox_manager: SandboxManager, prompt: str, target: str, openapi_spec, llm_provider: str = "openai"):
+ 
+    async def ask_with_ptk_panel(
+            self,
+            title: str = "Prompt",
+            placeholder: str = "Type here and press Enter"
+        ) -> Optional[str]:
+        """Prompt for input inside a bordered frame.
+
+        Typing occurs inside the frame; Enter accepts, Esc/Ctrl-C cancels.
+
+        Args:
+            title: Title text rendered above the frame.
+            placeholder: Prompt text shown before the cursor inside the field.
+
+        Returns:
+            The string entered by the user, or None if cancelled.
+        """
+        try:
+            style = Style.from_dict({
+                "frame.border": "ansicyan",
+                "text-area": "",
+            })
+
+            input_field = TextArea(
+                multiline=True,
+                wrap_lines=True,
+                prompt=placeholder,
+                text="",
+                scrollbar=True,
+            )
+
+            root_container = HSplit([
+                Label(text=title, style="bold ansicyan"),
+                Frame(body=input_field),
+            ])
+
+            kb = KeyBindings()
+
+            def _accept_handler(_buff):
+                app.exit(result=input_field.text)
+            input_field.accept_handler = _accept_handler
+
+            @kb.add("escape")
+            @kb.add("c-c")
+            def _(event):  # type: ignore[no-redef]
+                event.app.exit(result=None)
+
+            @kb.add("enter")
+            def _(event):  # type: ignore[no-redef]
+                event.app.exit(result=input_field.text)
+
+            app = Application(
+                layout=PTKLayout(container=root_container),
+                key_bindings=kb,
+                full_screen=False,
+                mouse_support=False,
+                style=style,
+            )
+            app.layout.focus(input_field)
+
+            return await app.run_async()
+        except KeyboardInterrupt:
+            return None
+
+async def chat_interface(
+        config: Config,
+        sandbox_manager: SandboxManager,
+        prompt: str,
+        target: str,
+        openapi_spec,
+        llm_provider: str = "openai"
+    ):
+    """Chat Interface for the CLI"""
     model_registry = ModelRegistry(config=config)
+    if not model_registry.has_any_model():
+        raise RuntimeError(f"No LM model configured. You can run `deadend init` to \
+            initialize the required Model configuration for {llm_provider}")
+
     model = model_registry.get_model(provider=llm_provider)
 
-    sandbox_id = sandbox_manager.create_sandbox()
+    # Try to initialize optional dependencies without exiting the app
+    rag_db = None
+    try:
+        rag_db = await init_rag_database(config.db_url)
+    except Exception:
+        console_printer.print("[yellow]Vector DB not accessible. Continuing without RAG.[/yellow]")
 
-    # Monitoring 
-    logfire.configure()
-    logfire.instrument_pydantic_ai()
-    
-    # Initializing the codeIndexer and the vector database
-    rag_db = await init_rag_database(config.db_url)
+    try:
+        sandbox_id = sandbox_manager.create_sandbox()
+    except Exception as e:
+        console_printer.print(f"[yellow]Sandbox unavailable: {e}. Continuing without sandbox.[/yellow]")
+        sandbox_id = None
 
     target_text = f"\nThe target host url is : {target}"
     chat_interface = ChatInterface()
@@ -125,23 +269,23 @@ async def chat_interface(config: Config, sandbox_manager: SandboxManager, prompt
     user_prompt = prompt
 
     try:
-        crawling_data = ""
         if target and config.zap_api_key:
-            # Crawling to webpage and downloading assets 
+            # Crawling to webpage and downloading assets
             code_indexer = SourceCodeIndexer(target=target)
             resources = await chat_interface.wait_response(
-                func=code_indexer.crawl_target, status="Gathering webpage and indexing source code.."
+                func=code_indexer.crawl_target,
+                status="Gathering webpage and indexing source code.."
             )
-            
-            # chunking and embedding the code 
-            chat_interface.console.print(f"Chunking the webpage's target source code.", end="\r")
-            
-            code_sections = await chat_interface.wait_response(
-                func=code_indexer.embed_webpage, 
-                status="Syncing...", 
-                openai_api_key=config.openai_api_key,
-                embedding_model=config.embedding_model
-            )
+            # chunking and embedding the code
+            chat_interface.console.print("Chunking the webpage's target source code.", end="\r")          
+            code_sections = []
+            if rag_db is not None and config.openai_api_key and config.embedding_model:
+                code_sections = await chat_interface.wait_response(
+                    func=code_indexer.embed_webpage,
+                    status="Syncing...",
+                    openai_api_key=config.openai_api_key,
+                    embedding_model=config.embedding_model
+                )
             chat_interface.console.print("code sections complete", end="\r")
             # Inserting into database
             code_chunks = []
@@ -153,14 +297,15 @@ async def chat_interface(config: Config, sandbox_manager: SandboxManager, prompt
                     "embedding": code_section.embeddings
                 }
                 code_chunks.append(chunk)
-            
-            chat_interface.console.print("Inserting code chunks in database...", end="\r")
-            insert = await chat_interface.wait_response(
-                func=rag_db.batch_insert_code_chunks, 
-                status="Syncing DB...",
-                code_chunks_data=code_chunks
-            )
-            chat_interface.console.print("Sync completed.", end="\r")
+
+            if rag_db is not None and code_chunks:
+                chat_interface.console.print("Inserting code chunks in database...", end="\r")
+                _ = await chat_interface.wait_response(
+                    func=rag_db.batch_insert_code_chunks,
+                    status="Syncing DB...",
+                    code_chunks_data=code_chunks
+                )
+                chat_interface.console.print("Sync completed.", end="\r")
 
         # The planner here can query the vector database
         planner = Planner(model=model, target=target, api_spec=openapi_spec)
@@ -169,13 +314,16 @@ async def chat_interface(config: Config, sandbox_manager: SandboxManager, prompt
         usage_limits = UsageLimits()
         while True:
             if not user_prompt:
-                user_prompt = Prompt.ask("Prompt >>>")
-                # user_prompt = chat_interface.prompt_user("Prompt >>>", "Try me")
+                user_prompt = await chat_interface.ask_with_ptk_panel(
+                    title="User prompt :",
+                    placeholder=">>> "
+                )
+
             user_prompt += target_text
             response = await chat_interface.wait_response(
                 func=planner.run, status="Thinking...", user_prompt=user_prompt,
-                message_history="", usage=usage, usage_limits=usage_limits, 
-                openai=AsyncOpenAI(api_key=config.openai_api_key), 
+                message_history="", usage=usage, usage_limits=usage_limits,
+                openai=AsyncOpenAI(api_key=config.openai_api_key),
                 rag=rag_db
             )
             tasks = response.output
@@ -185,20 +333,22 @@ async def chat_interface(config: Config, sandbox_manager: SandboxManager, prompt
             reasoning_for_requester = []
             for task in tasks:
                 reasoning_for_requester.append(task.output)
-            
-            continue_to_testing_grounds = Confirm.ask("[bold blue]Do you want to send the tasks to the testing Agent?[/bold blue]", default=False)
-            if continue_to_testing_grounds: 
+            continue_to_testing_grounds = Confirm.ask(
+                "[bold blue]Do you want to send the tasks to the testing Agent?[/bold blue]", 
+                default=False
+            )
+            if continue_to_testing_grounds:
                 target_deps = TargetDeps(
-                    target=target, 
-                    openapi_spec={}, 
-                    path_crawl_data="", 
+                    target=target,
+                    openapi_spec={},
+                    path_crawl_data="",
                     authentication_data="",
-                    openai=AsyncOpenAI(api_key=config.openai_api_key), 
+                    openai=AsyncOpenAI(api_key=config.openai_api_key),
                     rag=rag_db
                 )
                 tg_agent = TaskProcessor(
-                    target_info=target_deps, 
-                    model=model, 
+                    target_info=target_deps,
+                    model=model,
                     zap_api_key=config.zap_api_key
                 )
 
