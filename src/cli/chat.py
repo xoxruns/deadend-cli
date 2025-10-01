@@ -23,14 +23,52 @@ from core import Config, init_rag_database, sandbox_setup
 from core.workflow_runner import WorkflowRunner
 from core.utils.structures import Task
 from core.agents.webapp_recon_agent import RequesterOutput
+from core.agents.judge import JudgeOutput
 from core.utils.network import check_target_alive
 from core.models import ModelRegistry
 from .console import console_printer
+from pydantic import BaseModel
+from rich.text import Text
+from rich.table import Table
+from rich import box
 
 # Defining Agent modes
 class Modes(str, Enum):
     yolo = "yolo"
     hacker = "hacker"
+
+def print_pydantic_model(obj: BaseModel, title: str = "Agent Output") -> None:
+    """Print a Pydantic BaseModel object in a structured format.
+    
+    Args:
+        obj: The Pydantic BaseModel object to print
+        title: Title for the panel
+    """
+    # Create a table to display the model fields
+    table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
+    table.add_column("Field", style="cyan", no_wrap=True)
+    table.add_column("Value", style="white")
+    
+    # Add each field to the table
+    for field_name, field_value in obj.model_dump().items():
+        # Format the value for display
+        if isinstance(field_value, str) and len(field_value) > 100:
+            # Truncate long strings
+            display_value = field_value[:100] + "..." if len(field_value) > 100 else field_value
+        else:
+            display_value = str(field_value)
+        
+        table.add_row(field_name, display_value)
+    
+    # Create a panel with the table
+    panel = Panel(
+        table,
+        title=f"[bold green]{title}[/bold green]",
+        border_style="green",
+        box=box.ROUNDED
+    )
+    
+    console_printer.print(panel)
 
 class ChatInterface:
     """Console chat interface utilities.
@@ -369,7 +407,6 @@ async def chat_interface(
         while True:
             # Check if user prompt is provided, ask for it if not
             while not user_prompt:
-                console_printer.print("[yellow]No user prompt specified. Please provide a prompt for the AI agents.[/yellow]")
                 user_prompt = await chat_interface.ask_with_ptk_panel(
                     title="User Prompt",
                     placeholder="Prompt (e.g., 'Find vulnerabilities in the target') > ",
@@ -442,14 +479,46 @@ async def chat_interface(
             # Reset interruption flag
             agent_interrupted = False
             
-            judge_output = await chat_interface.wait_response(
-                func=workflow_agent.start_workflow,
-                status="agent running...",
-                prompt=user_prompt,
-                target=target,
-                validation_type=None,
-                validation_format=None
-            )
+            # Handle workflow execution with yielded messages
+            judge_output = None
+            
+            # Show running status
+            with console_printer.status("[bold blue]Agent workflow running...", spinner="dots2"):
+                try:
+                    async for item in workflow_agent.start_workflow(
+                        prompt=user_prompt,
+                        target=target,
+                        validation_type=None,
+                        validation_format=None
+                    ):
+                        # Check if this is the final result (JudgeOutput)
+                        if isinstance(item, JudgeOutput):
+                            judge_output = item
+
+                        # Check if this is a Pydantic BaseModel object
+                        if isinstance(item, BaseModel):
+                            # Special handling for RouterOutput - print as simple text
+                            if type(item).__name__ == "RouterOutput":
+                                console_printer.print(f"[cyan]Router:[/cyan] {item.next_agent_name}")
+                                console_printer.print(f"[cyan]Reasoning:[/cyan] {item.reasoning}")
+                            else:
+                                # Determine the type of model for better title
+                                model_type = type(item).__name__
+                                print_pydantic_model(item, f"{model_type} Output")
+                        else:
+                            # Print regular string messages
+                            console_printer.print(item)
+
+                        # Check for interruption
+                        if agent_interrupted:
+                            break
+
+                        # Small delay to allow for interruption
+                        await asyncio.sleep(0.1)
+
+                except Exception as e:
+                    console_printer.print(f"[red]Workflow error: {e}[/red]")
+                    judge_output = None
 
             # Check if agent was interrupted
             if agent_interrupted:
@@ -480,4 +549,3 @@ async def chat_interface(
         console_printer.print("\n[yellow]Received Ctrl+C. Exiting gracefully...[/yellow]")
         console_printer.print("[green]Thank you for using Deadend CLI![/green]")
         sys.exit(0)
-        

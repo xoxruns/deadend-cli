@@ -15,14 +15,14 @@ from core.context.context_engine import ContextEngine
 from core.utils.structures import ShellRunner, WebappreconDeps
 from core.agents import (
     AgentRunner, 
-    Planner, PlannerAgent, PlannerOutput, RagDeps,
-    RouterAgent,RouterOutput, 
+    Planner, RagDeps, PlannerOutput,
+    RouterAgent, RouterOutput,
     JudgeAgent, JudgeOutput,
-    WebappReconAgent, 
+    WebappReconAgent, RequesterOutput
 )
 
 # TODO: Handling message history to be able to use it in a better way
-MAX_ITERATION = 10
+MAX_ITERATION = 3
 
 def is_binary_file(file_path: str) -> bool:
     """Check if a file is binary based on its MIME type.
@@ -181,7 +181,7 @@ class WorkflowRunner:
         console_printer.print(f"[green]Sandbox started: {sandbox}[/green]")
         self.sandbox = sandbox
 
-    async def plan_tasks(self, goal: str, target: str) -> str:
+    async def plan_tasks(self, goal: str, target: str) -> PlannerOutput:
         """Plan tasks for achieving the given goal on the target.
         
         Args:
@@ -210,9 +210,9 @@ class WorkflowRunner:
             openai=openai_embedder
         )
         self.context.set_tasks(resp.output.tasks)
-        return str(resp.output.tasks)
+        return resp.output.tasks
 
-    async def route_task(self, prompt: str):
+    async def route_task(self, prompt: str) -> RouterOutput:
         """Route a task to the appropriate agent.
         
         Args:
@@ -306,7 +306,7 @@ class WorkflowRunner:
                 shell_runner=shell_runner
             )
             resp = await agent.run(
-                user_prompt=prompt + self.context.get_all_context(), 
+                user_prompt=prompt + self.context.get_all_context(),
                 message_history="",
                 usage=usage_agent,
                 deps=webapprecon_deps,
@@ -334,12 +334,15 @@ class WorkflowRunner:
             validation_type: Type of validation to perform
             validation_format: Format for validation results
             
+        Yields:
+            str: Messages to be printed by the chat interface
+            
         Returns:
             Final judge output from the workflow execution
         """
         # Plan the tasks
         tasks = await self.plan_tasks(goal=prompt, target=target)
-        console_printer.print(tasks)
+        yield tasks
         
         if validation_type is None:
             validation_type = "canary"
@@ -359,11 +362,11 @@ class WorkflowRunner:
         while not self.goal_achieved and iteration < MAX_ITERATION: 
             # Route task to appropriate agent
             agent_router = await self.route_task(prompt=prompt)
-            console_printer.print(str(agent_router))
+            yield agent_router
 
             # Execute the selected agent
             agent_response = await self.run_agent(self.context.next_agent, prompt)
-            console_printer.print(agent_response)
+            yield agent_response
 
             iteration += 1
             judge_output = await judge_agent.run(
@@ -380,6 +383,5 @@ class WorkflowRunner:
             if judge_output.output.goal_achieved:
                 self.goal_achieved = True
 
-        console_printer.print(judge_str)
-        console_printer.print("END")
-        return judge_output
+        yield "END"
+        yield judge_output.output  # Yield the final result as the last item

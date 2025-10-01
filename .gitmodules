@@ -1,0 +1,3 @@
+[submodule "knowledge_base/Pentest-Hardcore-Dataset"]
+	path = knowledge_base/Pentest-Hardcore-Dataset
+	url = https://github.com/xoxruns/Pentest-Hardcore-Dataset.git
