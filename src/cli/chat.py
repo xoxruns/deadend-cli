@@ -1,6 +1,8 @@
 import time
+import os
 import asyncio
 import sys
+from enum import Enum
 from typing import Dict, List, Callable, Optional
 import logfire
 from rich.console import Console
@@ -21,15 +23,21 @@ from openai import AsyncOpenAI
 from pydantic_ai.usage import Usage, UsageLimits
 
 from core import Config, init_rag_database, sandbox_setup
-from core.sandbox.sandbox_manager import SandboxManager
+from core.workflow_runner import WorkflowRunner
 from core.utils.structures import Task
 from core.agents.planner import Planner
 from core.agents.webapp_recon_agent import RequesterOutput
 from core.task_processor import TaskProcessor
-from core.tools.code_indexer import SourceCodeIndexer
+from core.embedders.code_indexer import SourceCodeIndexer
 from core.utils.structures import TargetDeps
+from core.utils.network import check_target_alive
 from core.models import ModelRegistry
 from .console import console_printer
+
+# Defining Agent modes
+class Modes(str, Enum):
+    yolo = "yolo"
+    hacker = "hacker"
 
 class ChatInterface:
     """Console chat interface utilities.
@@ -81,7 +89,7 @@ class ChatInterface:
                     await update_task
                 except asyncio.CancelledError:
                     pass
- 
+
     def print_chat_response(self, message: str, agent_name: str):
         """Print a simple agent message to the console.
 
@@ -139,38 +147,6 @@ class ChatInterface:
         self.console.print("[bold green] Starting Agent Mode: Chat interface.[/bold green]")
         self.console.print("Type '/help' for commands, '/quit' to exit.")
 
-    def ask_with_panel(
-            self,
-            title: str = "Prompt",
-            prompt_text: str = ">>> "
-        ) -> Optional[str]:
-        """Render a Rich panel around the prompt label, then read input.
-
-        This uses Rich for the static panel and falls back to a plain
-        one-line input. For an in-panel editable input, use
-        `ask_with_ptk_panel` instead.
-
-        Args:
-            title: Panel title.
-            prompt_text: Prompt label displayed inside the panel.
-
-        Returns:
-            The string entered by the user, or None if cancelled.
-        """
-        try:
-            self.console.print(
-                Panel.fit(
-                    f"[bold cyan]{prompt_text}[/bold cyan]",
-                    title=title,
-                    border_style="cyan",
-                    box=ROUNDED,
-                )
-            )
-            return Prompt.ask("")
-        except KeyboardInterrupt:
-            return None
-
- 
     async def ask_with_ptk_panel(
             self,
             title: str = "Prompt",
@@ -236,11 +212,19 @@ class ChatInterface:
 
 async def chat_interface(
         config: Config,
-        sandbox_manager: SandboxManager,
+        # Config
         prompt: str,
+        # CLI user prompt
+        mode: Modes,
+        # Mode setup
         target: str,
+        # target
         openapi_spec,
+        # OpenAPI spec if available
+        knowledge_base: str,
+        # Knowledge base path
         llm_provider: str = "openai"
+        # LLM provider
     ):
     """Chat Interface for the CLI"""
     model_registry = ModelRegistry(config=config)
@@ -256,109 +240,174 @@ async def chat_interface(
         rag_db = await init_rag_database(config.db_url)
     except Exception:
         console_printer.print("[yellow]Vector DB not accessible. Continuing without RAG.[/yellow]")
-
+    # Settings up sandbox
     try:
-        sandbox_id = sandbox_manager.create_sandbox()
+        sandbox_manager = sandbox_setup()
+        sandbox_id = sandbox_manager.create_sandbox("kali_deadend")
+        sandbox = sandbox_manager.get_sandbox(sandbox_id=sandbox_id)
     except Exception as e:
-        console_printer.print(f"[yellow]Sandbox unavailable: {e}. Continuing without sandbox.[/yellow]")
-        sandbox_id = None
+        console_printer.print(f"[yellow]Sandbox manager could not be started : {e}. Continuing without sandbox.[/yellow]")
 
-    target_text = f"\nThe target host url is : {target}"
     chat_interface = ChatInterface()
     chat_interface.startup()
     user_prompt = prompt
 
-    try:
-        if target and config.zap_api_key:
-            # Crawling to webpage and downloading assets
-            code_indexer = SourceCodeIndexer(target=target)
-            resources = await chat_interface.wait_response(
-                func=code_indexer.crawl_target,
-                status="Gathering webpage and indexing source code.."
+    workflow_agent = WorkflowRunner(
+        model=model,
+        config=config,
+        code_indexer_db=rag_db,
+        sandbox=sandbox
+    )
+    # Setup available agents
+    available_agents = {
+        'webapp_recon': "Expert cybersecurity agent that enumerates a web target to understand the architecture and understand the endpoints and where an attack vector could be tested.",
+        # 'planner_agent': 'Expert cybersecurity agent that plans what is the next step to do',
+        'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
+    }
+    workflow_agent.register_agents(available_agents)
+    workflow_agent.register_sandbox_runner()
+    # Check if the provided target is reachable before proceeding
+    alive = False
+    if target:
+        alive, status_code, err = await check_target_alive(target)
+        if alive:
+            console_printer.print(f"[green]Target reachable[/green] (status={status_code})")
+        else:
+            console_printer.print(
+                f"[red]Target not reachable[/red] (status={status_code}, error={err}), Please check if the target is reachable.")
+            console_printer.print("[red]Exiting application...[/red]")
+            sys.exit(1)
+    if alive:
+        # Indexing webtarget
+        workflow_agent.init_webtarget_indexer(target=target)
+        web_ressource_crawl = await chat_interface.wait_response(
+            func=workflow_agent.crawl_target,
+            status="Gathering webpage resources..."
+        )
+        code_chunks = await chat_interface.wait_response(
+            func=workflow_agent.embed_target,
+            status="Indexing the different webpage resources..."
+        )
+
+        # Inserting in database
+        if rag_db is not None and config.openai_api_key and config.embedding_model:
+            insert = await chat_interface.wait_response(
+                func=rag_db.batch_insert_code_chunks,
+                status="Syncing DB",
+                code_chunks_data=code_chunks
             )
-            # chunking and embedding the code
-            chat_interface.console.print("Chunking the webpage's target source code.", end="\r")          
-            code_sections = []
-            if rag_db is not None and config.openai_api_key and config.embedding_model:
-                code_sections = await chat_interface.wait_response(
-                    func=code_indexer.embed_webpage,
-                    status="Syncing...",
-                    openai_api_key=config.openai_api_key,
-                    embedding_model=config.embedding_model
-                )
-            chat_interface.console.print("code sections complete", end="\r")
-            # Inserting into database
-            code_chunks = []
-            for code_section in code_sections:
-                chunk = {
-                    "file_path": code_section.url_path, 
-                    "language": code_section.title, 
-                    "code_content": str(code_section.content), 
-                    "embedding": code_section.embeddings
-                }
-                code_chunks.append(chunk)
 
-            if rag_db is not None and code_chunks:
-                chat_interface.console.print("Inserting code chunks in database...", end="\r")
-                _ = await chat_interface.wait_response(
-                    func=rag_db.batch_insert_code_chunks,
-                    status="Syncing DB...",
-                    code_chunks_data=code_chunks
-                )
-                chat_interface.console.print("Sync completed.", end="\r")
-
-        # The planner here can query the vector database
-        planner = Planner(model=model, target=target, api_spec=openapi_spec)
-
-        usage = Usage()
-        usage_limits = UsageLimits()
-        while True:
-            if not user_prompt:
-                user_prompt = await chat_interface.ask_with_ptk_panel(
-                    title="User prompt :",
-                    placeholder=">>> "
-                )
-
-            user_prompt += target_text
-            response = await chat_interface.wait_response(
-                func=planner.run, status="Thinking...", user_prompt=user_prompt,
-                message_history="", usage=usage, usage_limits=usage_limits,
-                openai=AsyncOpenAI(api_key=config.openai_api_key),
-                rag=rag_db
+    # Setup the knowledge base in the database if necessary
+    if knowledge_base:
+        if os.path.exists(knowledge_base) and os.path.isdir(knowledge_base):
+            workflow_agent.knowledge_base_init(folder_path=knowledge_base)
+            kb_chunks = await chat_interface.wait_response(
+                func=workflow_agent.knowledge_base_index,
+                status="Indexing the knowledge base...",
             )
-            tasks = response.output
-
-            # Print in panel
-            chat_interface.print_planner_response(output=tasks, title="Plan Agent")
-            reasoning_for_requester = []
-            for task in tasks:
-                reasoning_for_requester.append(task.output)
-            continue_to_testing_grounds = Confirm.ask(
-                "[bold blue]Do you want to send the tasks to the testing Agent?[/bold blue]", 
-                default=False
+            # insert to db
+            insert_kn = await chat_interface.wait_response(
+                func=rag_db.batch_insert_kb_chunks,
+                status="Syncing DB",
+                knowledge_chunks_data=kb_chunks
             )
-            if continue_to_testing_grounds:
-                target_deps = TargetDeps(
-                    target=target,
-                    openapi_spec={},
-                    path_crawl_data="",
-                    authentication_data="",
-                    openai=AsyncOpenAI(api_key=config.openai_api_key),
-                    rag=rag_db
-                )
-                tg_agent = TaskProcessor(
-                    target_info=target_deps,
-                    model=model,
-                    zap_api_key=config.zap_api_key
-                )
+        else:
+            console_printer.print(f"[yellow]Warning: Knowledge base folder '{knowledge_base}' does not exist or is not a directory. Skipping knowledge base initialization.[/yellow]")
 
-                analysis = await chat_interface.wait_response(
-                    func=tg_agent.analyze_requests, status="Sending requests...",
-                    payloads=reasoning_for_requester,
-                    usage_a=usage, usage_limits=usage_limits, 
-                )   
-                chat_interface.print_requester_response(analysis, "Analyzer Agent")
+    
 
-            user_prompt = None 
-    except ValueError:
-        sys.exit()
+
+    # try:
+    #     if target and config.zap_api_key:
+    #         # Crawling to webpage and downloading assets
+    #         code_indexer = SourceCodeIndexer(target=target)
+    #         resources = await chat_interface.wait_response(
+    #             func=code_indexer.crawl_target,
+    #             status="Gathering webpage and indexing source code.."
+    #         )
+    #         # chunking and embedding the code
+    #         chat_interface.console.print("Chunking the webpage's target source code.", end="\r") 
+    #         code_sections = []
+    #         if rag_db is not None and config.openai_api_key and config.embedding_model:
+    #             code_sections = await chat_interface.wait_response(
+    #                 func=code_indexer.embed_webpage,
+    #                 status="Syncing...",
+    #                 openai_api_key=config.openai_api_key,
+    #                 embedding_model=config.embedding_model
+    #             )
+    #         chat_interface.console.print("code sections complete", end="\r")
+    #         # Inserting into database
+    #         code_chunks = []
+    #         for code_section in code_sections:
+    #             chunk = {
+    #                 "file_path": code_section.url_path,
+    #                 "language": code_section.title,
+    #                 "code_content": str(code_section.content),
+    #                 "embedding": code_section.embeddings
+    #             }
+    #             code_chunks.append(chunk)
+
+    #         if rag_db is not None and code_chunks:
+    #             chat_interface.console.print("Inserting code chunks in database...", end="\r")
+    #             _ = await chat_interface.wait_response(
+    #                 func=rag_db.batch_insert_code_chunks,
+    #                 status="Syncing DB...",
+    #                 code_chunks_data=code_chunks
+    #             )
+    #             chat_interface.console.print("Sync completed.", end="\r")
+
+    #     # The planner here can query the vector database
+    #     planner = Planner(model=model, target=target, api_spec=openapi_spec)
+
+    #     usage = Usage()
+    #     usage_limits = UsageLimits()
+    #     while True:
+    #         if not user_prompt:
+    #             user_prompt = await chat_interface.ask_with_ptk_panel(
+    #                 title="User prompt :",
+    #                 placeholder=">>> "
+    #             )
+
+    #         user_prompt += target_text
+    #         response = await chat_interface.wait_response(
+    #             func=planner.run, status="Thinking...", user_prompt=user_prompt,
+    #             message_history="", usage=usage, usage_limits=usage_limits,
+    #             openai=AsyncOpenAI(api_key=config.openai_api_key),
+    #             rag=rag_db
+    #         )
+    #         tasks = response.output
+
+    #         # Print in panel
+    #         chat_interface.print_planner_response(output=tasks, title="Plan Agent")
+    #         reasoning_for_requester = []
+    #         for task in tasks:
+    #             reasoning_for_requester.append(task.output)
+    #         continue_to_testing_grounds = Confirm.ask(
+    #             "[bold blue]Do you want to send the tasks to the testing Agent?[/bold blue]", 
+    #             default=False
+    #         )
+    #         if continue_to_testing_grounds:
+    #             target_deps = TargetDeps(
+    #                 target=target,
+    #                 openapi_spec={},
+    #                 path_crawl_data="",
+    #                 authentication_data="",
+    #                 openai=AsyncOpenAI(api_key=config.openai_api_key),
+    #                 rag=rag_db
+    #             )
+    #             tg_agent = TaskProcessor(
+    #                 target_info=target_deps,
+    #                 model=model,
+    #                 zap_api_key=config.zap_api_key
+    #             )
+
+    #             analysis = await chat_interface.wait_response(
+    #                 func=tg_agent.analyze_requests, status="Sending requests...",
+    #                 payloads=reasoning_for_requester,
+    #                 usage_a=usage, usage_limits=usage_limits, 
+    #             )   
+    #             chat_interface.print_requester_response(analysis, "Analyzer Agent")
+
+    #         user_prompt = None 
+    # except ValueError:
+    #     sys.exit()

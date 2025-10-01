@@ -62,6 +62,21 @@ class SourceCodeIndexer:
         self.chunk_path = self.source_code_path.joinpath(self.chunk_folder)
         self.chunk_path.mkdir(parents=True, exist_ok=True)
     
+    async def serialized_embedded_code(self, openai_api_key: str, embedding_model: str):
+        code_sections = await self.embed_webpage(
+            openai_api_key=openai_api_key,
+            embedding_model=embedding_model
+            )
+        code_chunks = []
+        for code_section in code_sections:
+            chunk = {
+                    "file_path": code_section.url_path, 
+                    "language": code_section.title, 
+                    "code_content": str(code_section.content), 
+                    "embedding": code_section.embeddings
+                }
+            code_chunks.append(chunk)
+        return code_chunks
     async def embed_webpage(self, openai_api_key: str, embedding_model: str) -> List[CodeSection]:
         """
         Chunk every JS and HTML file found in the session directory

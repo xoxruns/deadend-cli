@@ -93,17 +93,17 @@ async def eval_agent(
     if with_code_indexing:
         workflow_agent.init_webtarget_indexer(target_host)
         web_resources_crawler = await workflow_agent.crawl_target()
-        code_sections = await workflow_agent.embed_target()
+        code_chunks = await workflow_agent.embed_target()
         # TODO: better Handling code sections
-        code_chunks = []
-        for code_section in code_sections:
-            chunk = {
-                    "file_path": code_section.url_path, 
-                    "language": code_section.title, 
-                    "code_content": str(code_section.content), 
-                    "embedding": code_section.embeddings
-                }
-            code_chunks.append(chunk)
+        # code_chunks = []
+        # for code_section in code_sections:
+        #     chunk = {
+        #             "file_path": code_section.url_path, 
+        #             "language": code_section.title, 
+        #             "code_content": str(code_section.content), 
+        #             "embedding": code_section.embeddings
+        #         }
+        #     code_chunks.append(chunk)
         insert = await code_indexer_db.batch_insert_code_chunks(code_chunks_data=code_chunks)
         console_printer.print("Sync completed.", end="\r")
 

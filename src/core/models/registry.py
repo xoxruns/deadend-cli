@@ -7,7 +7,6 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.google import GoogleProvider
 
 from core import Config
-
 # AIModel abstraction
 AIModel = OpenAIModel | AnthropicModel | GoogleModel
 

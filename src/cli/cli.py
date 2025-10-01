@@ -11,11 +11,12 @@ import typer
 import toml
 
 from core import config_setup, sandbox_setup
-from cli.chat import chat_interface
+from cli.chat import chat_interface, Modes
 from cli.eval import eval_interface
 from cli.banner import print_banner
 
 app = typer.Typer(help="Deadend CLI - interact with the Deadend framework.")
+
 
 
 @app.command()
@@ -28,7 +29,9 @@ def version():
 def chat(
     prompt: str = typer.Option(None, help="Send a prompt directly to chat mode."),
     target: str = typer.Option(None, help="Target URL or identifier for chat."),
-    openapi_spec: str = typer.Option(None, help="Path to the OpenAPI specification file.")
+    mode: str = typer.Option(Modes.yolo, help="Two modes available, yolo and hacker."),
+    openapi_spec: str = typer.Option(None, help="Path to the OpenAPI specification file."),
+    knowledge_base: str = typer.Option(None, help="Folder path to the knowledge base.")
     ):
     """Run the interactive chat agent.
 
@@ -39,9 +42,18 @@ def chat(
     """
     # Init configuration
     config = config_setup()
-    sandbox_manager = sandbox_setup()
     print_banner(config=config)
-    asyncio.run(chat_interface(config, sandbox_manager, prompt, target, openapi_spec))
+
+    asyncio.run(
+        chat_interface(
+            config=config, 
+            prompt=prompt,
+            mode=mode,
+            target=target,
+            openapi_spec=openapi_spec,
+            knowledge_base=knowledge_base
+        )
+    )
 
 
 @app.command()
@@ -71,7 +83,6 @@ def eval_agent(
             guided=guided
         )
     )
-
 
 @app.command()
 def init():

@@ -24,10 +24,6 @@ class TaskProcessor:
     Sends the results to the replan agent. 
     The replan agent decides to loop back and replan or exit. 
 
-    # TODO:
-    The testing grounds has a shared memory between all its agents. 
-    To build a specific context. 
-
     """
     def __init__(self, target_info: TargetDeps, model: AIModel, zap_api_key: str):
         self.target_info = target_info
