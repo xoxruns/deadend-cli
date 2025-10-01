@@ -40,9 +40,9 @@ class SourceCodeIndexer:
 
     async def crawl_target(self):
         self.resources = await self.crawler.extract_all_resources(
-            url=self.target, 
-            wait_time=3, 
-            screenshot=False, 
+            url=self.target,
+            wait_time=3,
+            screenshot=False,
             download_resources=True,
             download_path=self.source_code_path
         )

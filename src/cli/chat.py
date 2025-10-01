@@ -15,21 +15,14 @@ from prompt_toolkit.widgets import TextArea, Frame, Label
 from prompt_toolkit.layout import Layout as PTKLayout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
-from prompt_toolkit.layout.containers import HSplit
- 
+from prompt_toolkit.layout.containers import HSplit, VSplit
+from prompt_toolkit.layout import Dimension as D
 
-from openai import AsyncOpenAI
-
-from pydantic_ai.usage import Usage, UsageLimits
 
 from core import Config, init_rag_database, sandbox_setup
 from core.workflow_runner import WorkflowRunner
 from core.utils.structures import Task
-from core.agents.planner import Planner
 from core.agents.webapp_recon_agent import RequesterOutput
-from core.task_processor import TaskProcessor
-from core.embedders.code_indexer import SourceCodeIndexer
-from core.utils.structures import TargetDeps
 from core.utils.network import check_target_alive
 from core.models import ModelRegistry
 from .console import console_printer
@@ -150,7 +143,8 @@ class ChatInterface:
     async def ask_with_ptk_panel(
             self,
             title: str = "Prompt",
-            placeholder: str = "Type here and press Enter"
+            placeholder: str = "Type here and press Enter",
+            interrupt_callback: Optional[Callable] = None
         ) -> Optional[str]:
         """Prompt for input inside a bordered frame.
 
@@ -173,13 +167,19 @@ class ChatInterface:
                 multiline=True,
                 wrap_lines=True,
                 prompt=placeholder,
-                text="",
                 scrollbar=True,
+                text="",
+                height=D(min=1, max=5),
             )
 
+            # Create footer with available commands
+            footer_text = "Commands: Ctrl+C=Exit | Ctrl+I=Interrupt | Enter=Submit | /help=Help | /clear=Clear | /new-target=New Target"
+            footer = Label(text=footer_text, style="ansiblack")
+            
             root_container = HSplit([
                 Label(text=title, style="bold ansicyan"),
                 Frame(body=input_field),
+                footer,
             ])
 
             kb = KeyBindings()
@@ -188,14 +188,34 @@ class ChatInterface:
                 app.exit(result=input_field.text)
             input_field.accept_handler = _accept_handler
 
-            @kb.add("escape")
             @kb.add("c-c")
             def _(event):  # type: ignore[no-redef]
                 event.app.exit(result=None)
 
+            @kb.add("c-i")
+            def _(event):  # type: ignore[no-redef]
+                if interrupt_callback:
+                    interrupt_callback()
+                event.app.exit(result="__INTERRUPT__")
+
             @kb.add("enter")
             def _(event):  # type: ignore[no-redef]
-                event.app.exit(result=input_field.text)
+                text = input_field.text
+                if text.startswith("/"):
+                    # Handle commands
+                    if text == "/clear":
+                        event.app.exit(result="__CLEAR__")
+                    elif text == "/new-target":
+                        event.app.exit(result="__NEW_TARGET__")
+                    elif text == "/help":
+                        event.app.exit(result="__HELP__")
+                    elif text == "/quit":
+                        event.app.exit(result=None)
+                    else:
+                        # Unknown command, treat as regular text
+                        event.app.exit(result=text)
+                else:
+                    event.app.exit(result=text)
 
             app = Application(
                 layout=PTKLayout(container=root_container),
@@ -203,6 +223,7 @@ class ChatInterface:
                 full_screen=False,
                 mouse_support=False,
                 style=style,
+                min_redraw_interval=0.01,
             )
             app.layout.focus(input_field)
 
@@ -233,7 +254,7 @@ async def chat_interface(
             initialize the required Model configuration for {llm_provider}")
 
     model = model_registry.get_model(provider=llm_provider)
-
+    
     # Try to initialize optional dependencies without exiting the app
     rag_db = None
     try:
@@ -250,6 +271,7 @@ async def chat_interface(
 
     chat_interface = ChatInterface()
     chat_interface.startup()
+    chat_interface.console.print(f"Model currently used : {model.model_name}")
     user_prompt = prompt
 
     workflow_agent = WorkflowRunner(
@@ -268,34 +290,54 @@ async def chat_interface(
     workflow_agent.register_sandbox_runner()
     # Check if the provided target is reachable before proceeding
     alive = False
-    if target:
+    while not alive:
+        if not target:
+            # Prompt user for target if none provided
+            console_printer.print("[yellow]No target specified. Please provide a target URL.[/yellow]")
+            target = await chat_interface.ask_with_ptk_panel(
+                title="Target URL",
+                placeholder="Enter the target URL (e.g., https://example.com) > "
+            )
+
+            if not target:
+                console_printer.print("[red]No target provided. Exiting application...[/red]")
+                sys.exit(1)
+
+        # Check target reachability
         alive, status_code, err = await check_target_alive(target)
         if alive:
             console_printer.print(f"[green]Target reachable[/green] (status={status_code})")
         else:
             console_printer.print(
-                f"[red]Target not reachable[/red] (status={status_code}, error={err}), Please check if the target is reachable.")
-            console_printer.print("[red]Exiting application...[/red]")
-            sys.exit(1)
-    if alive:
-        # Indexing webtarget
-        workflow_agent.init_webtarget_indexer(target=target)
-        web_ressource_crawl = await chat_interface.wait_response(
-            func=workflow_agent.crawl_target,
-            status="Gathering webpage resources..."
-        )
-        code_chunks = await chat_interface.wait_response(
-            func=workflow_agent.embed_target,
-            status="Indexing the different webpage resources..."
-        )
-
-        # Inserting in database
-        if rag_db is not None and config.openai_api_key and config.embedding_model:
-            insert = await chat_interface.wait_response(
-                func=rag_db.batch_insert_code_chunks,
-                status="Syncing DB",
-                code_chunks_data=code_chunks
+                f"[red]Target not reachable[/red] (status={status_code}, error={err})")
+            console_printer.print("[yellow]Please provide a different target URL.[/yellow]")
+            target = await chat_interface.ask_with_ptk_panel(
+                title="Target URL",
+                placeholder="Enter a valid target URL (e.g., https://example.com) > "
             )
+
+            if not target:
+                console_printer.print("[red]No target provided. Exiting application...[/red]")
+                sys.exit(1)
+
+    # Indexing webtarget
+    workflow_agent.init_webtarget_indexer(target=target)
+    web_ressource_crawl = await chat_interface.wait_response(
+        func=workflow_agent.crawl_target,
+        status="Gathering webpage resources..."
+    )
+    code_chunks = await chat_interface.wait_response(
+        func=workflow_agent.embed_target,
+        status="Indexing the different webpage resources..."
+    )
+
+    # Inserting in database
+    if rag_db is not None and config.openai_api_key and config.embedding_model:
+        insert = await chat_interface.wait_response(
+            func=rag_db.batch_insert_code_chunks,
+            status="Syncing DB",
+            code_chunks_data=code_chunks
+        )
 
     # Setup the knowledge base in the database if necessary
     if knowledge_base:
@@ -314,100 +356,128 @@ async def chat_interface(
         else:
             console_printer.print(f"[yellow]Warning: Knowledge base folder '{knowledge_base}' does not exist or is not a directory. Skipping knowledge base initialization.[/yellow]")
 
+
+    # Agent interruption flag
+    agent_interrupted = False
     
+    def interrupt_agent():
+        nonlocal agent_interrupted
+        agent_interrupted = True
+        console_printer.print("\n[yellow]Agent interrupted by user (Ctrl+I)[/yellow]")
 
+    try:
+        while True:
+            # Check if user prompt is provided, ask for it if not
+            while not user_prompt:
+                console_printer.print("[yellow]No user prompt specified. Please provide a prompt for the AI agents.[/yellow]")
+                user_prompt = await chat_interface.ask_with_ptk_panel(
+                    title="User Prompt",
+                    placeholder="Prompt (e.g., 'Find vulnerabilities in the target') > ",
+                    interrupt_callback=interrupt_agent
+                )
 
-    # try:
-    #     if target and config.zap_api_key:
-    #         # Crawling to webpage and downloading assets
-    #         code_indexer = SourceCodeIndexer(target=target)
-    #         resources = await chat_interface.wait_response(
-    #             func=code_indexer.crawl_target,
-    #             status="Gathering webpage and indexing source code.."
-    #         )
-    #         # chunking and embedding the code
-    #         chat_interface.console.print("Chunking the webpage's target source code.", end="\r") 
-    #         code_sections = []
-    #         if rag_db is not None and config.openai_api_key and config.embedding_model:
-    #             code_sections = await chat_interface.wait_response(
-    #                 func=code_indexer.embed_webpage,
-    #                 status="Syncing...",
-    #                 openai_api_key=config.openai_api_key,
-    #                 embedding_model=config.embedding_model
-    #             )
-    #         chat_interface.console.print("code sections complete", end="\r")
-    #         # Inserting into database
-    #         code_chunks = []
-    #         for code_section in code_sections:
-    #             chunk = {
-    #                 "file_path": code_section.url_path,
-    #                 "language": code_section.title,
-    #                 "code_content": str(code_section.content),
-    #                 "embedding": code_section.embeddings
-    #             }
-    #             code_chunks.append(chunk)
+                if not user_prompt:
+                    console_printer.print("[red]No prompt provided. Exiting...[/red]")
+                    break
+                elif user_prompt == "__CLEAR__":
+                    console_printer.print("[green]Context cleared[/green]")
+                    # Clear conversation history
+                    chat_interface.conversation = []
+                    user_prompt = None
+                    continue
+                elif user_prompt == "__NEW_TARGET__":
+                    # Get new target
+                    new_target = await chat_interface.ask_with_ptk_panel(
+                        title="New Target URL",
+                        placeholder="Enter the new target URL (e.g., https://example.com) > "
+                    )
+                    if new_target and new_target != "__CLEAR__" and new_target != "__NEW_TARGET__":
+                        target = new_target
+                        console_printer.print(f"[green]Target changed to: {target}[/green]")
+                        # Re-initialize with new target
+                        workflow_agent.init_webtarget_indexer(target=target)
+                        web_ressource_crawl = await chat_interface.wait_response(
+                            func=workflow_agent.crawl_target,
+                            status="Gathering webpage resources for new target..."
+                        )
+                        code_chunks = await chat_interface.wait_response(
+                            func=workflow_agent.embed_target,
+                            status="Indexing the different webpage resources for new target..."
+                        )
+                        if rag_db is not None and config.openai_api_key and config.embedding_model:
+                            insert = await chat_interface.wait_response(
+                                func=rag_db.batch_insert_code_chunks,
+                                status="Syncing DB with new target data",
+                                code_chunks_data=code_chunks
+                            )
+                    user_prompt = None
+                    continue
+                elif user_prompt == "__HELP__":
+                    console_printer.print("""
+[bold cyan]Available Commands:[/bold cyan]
+  [bold]/help[/bold]     - Show this help message
+  [bold]/clear[/bold]    - Clear conversation context
+  [bold]/new-target[/bold] - Change the target URL
+  [bold]/quit[/bold]     - Exit the application
 
-    #         if rag_db is not None and code_chunks:
-    #             chat_interface.console.print("Inserting code chunks in database...", end="\r")
-    #             _ = await chat_interface.wait_response(
-    #                 func=rag_db.batch_insert_code_chunks,
-    #                 status="Syncing DB...",
-    #                 code_chunks_data=code_chunks
-    #             )
-    #             chat_interface.console.print("Sync completed.", end="\r")
+[bold cyan]Keyboard Shortcuts:[/bold cyan]
+  [bold]Ctrl+C[/bold]     - Exit the application
+  [bold]Ctrl+I[/bold]     - Interrupt running agent
+  [bold]Enter[/bold]      - Submit input
+                    """)
+                    user_prompt = None
+                    continue
+                elif user_prompt == "__INTERRUPT__":
+                    console_printer.print("[yellow]Interrupt command received[/yellow]")
+                    user_prompt = None
+                    continue
+                elif user_prompt == "":
+                    console_printer.print("[red]No prompt provided. Please try again.[/red]")
+                    user_prompt = None
+                    continue
 
-    #     # The planner here can query the vector database
-    #     planner = Planner(model=model, target=target, api_spec=openapi_spec)
+            if not user_prompt:
+                break
 
-    #     usage = Usage()
-    #     usage_limits = UsageLimits()
-    #     while True:
-    #         if not user_prompt:
-    #             user_prompt = await chat_interface.ask_with_ptk_panel(
-    #                 title="User prompt :",
-    #                 placeholder=">>> "
-    #             )
+            # Reset interruption flag
+            agent_interrupted = False
+            
+            judge_output = await chat_interface.wait_response(
+                func=workflow_agent.start_workflow,
+                status="agent running...",
+                prompt=user_prompt,
+                target=target,
+                validation_type=None,
+                validation_format=None
+            )
 
-    #         user_prompt += target_text
-    #         response = await chat_interface.wait_response(
-    #             func=planner.run, status="Thinking...", user_prompt=user_prompt,
-    #             message_history="", usage=usage, usage_limits=usage_limits,
-    #             openai=AsyncOpenAI(api_key=config.openai_api_key),
-    #             rag=rag_db
-    #         )
-    #         tasks = response.output
+            # Check if agent was interrupted
+            if agent_interrupted:
+                console_printer.print("[yellow]Agent execution was interrupted[/yellow]")
+                user_prompt = None
+                continue
 
-    #         # Print in panel
-    #         chat_interface.print_planner_response(output=tasks, title="Plan Agent")
-    #         reasoning_for_requester = []
-    #         for task in tasks:
-    #             reasoning_for_requester.append(task.output)
-    #         continue_to_testing_grounds = Confirm.ask(
-    #             "[bold blue]Do you want to send the tasks to the testing Agent?[/bold blue]", 
-    #             default=False
-    #         )
-    #         if continue_to_testing_grounds:
-    #             target_deps = TargetDeps(
-    #                 target=target,
-    #                 openapi_spec={},
-    #                 path_crawl_data="",
-    #                 authentication_data="",
-    #                 openai=AsyncOpenAI(api_key=config.openai_api_key),
-    #                 rag=rag_db
-    #             )
-    #             tg_agent = TaskProcessor(
-    #                 target_info=target_deps,
-    #                 model=model,
-    #                 zap_api_key=config.zap_api_key
-    #             )
+            # Print judge output in a nice format
+            console_printer.print("[bold blue]Agent task completed[/bold blue]")
 
-    #             analysis = await chat_interface.wait_response(
-    #                 func=tg_agent.analyze_requests, status="Sending requests...",
-    #                 payloads=reasoning_for_requester,
-    #                 usage_a=usage, usage_limits=usage_limits, 
-    #             )   
-    #             chat_interface.print_requester_response(analysis, "Analyzer Agent")
+            if hasattr(judge_output, 'output') and hasattr(judge_output.output, 'goal_achieved'):
+                if judge_output.output.goal_achieved:
+                    console_printer.print("[bold green]✓ Goal achieved[/bold green]")
+                else:
+                    console_printer.print("[bold red]✗ Goal not achieved[/bold red]")
 
-    #         user_prompt = None 
-    # except ValueError:
-    #     sys.exit()
+            if hasattr(judge_output, 'output') and hasattr(judge_output.output, 'reasoning'):
+                console_printer.print("\n[bold yellow]Reasoning:[/bold yellow]")
+                console_printer.print(f"{judge_output.output.reasoning}")
+
+            if hasattr(judge_output, 'output') and hasattr(judge_output.output, 'solution'):
+                console_printer.print("\n[bold cyan]Solution:[/bold cyan]")
+                console_printer.print(f"{judge_output.output.solution}")
+
+            # Reset user prompt to ask for a new one in the next iteration
+            user_prompt = None           
+    except KeyboardInterrupt:
+        console_printer.print("\n[yellow]Received Ctrl+C. Exiting gracefully...[/yellow]")
+        console_printer.print("[green]Thank you for using Deadend CLI![/green]")
+        sys.exit(0)
+        

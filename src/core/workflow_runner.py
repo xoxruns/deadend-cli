@@ -325,7 +325,7 @@ class WorkflowRunner:
         self.context.add_agent_response(agent_response)
         return agent_response
 
-    async def start_workflow(self, prompt: str, target: str, validation_type: str, validation_format: str):
+    async def start_workflow(self, prompt: str, target: str, validation_type: str | None, validation_format: str | None):
         """Start the main workflow execution.
         
         Args:
@@ -340,6 +340,12 @@ class WorkflowRunner:
         # Plan the tasks
         tasks = await self.plan_tasks(goal=prompt, target=target)
         console_printer.print(tasks)
+        
+        if validation_type is None:
+            validation_type = "canary"
+
+        if validation_format is None:
+            validation_format = "What looks more likely a vulnerability or undefined behavior that is verified with a tool."
 
         judge_agent = JudgeAgent(
             self.model, None, [],
@@ -361,10 +367,10 @@ class WorkflowRunner:
 
             iteration += 1
             judge_output = await judge_agent.run(
-                user_prompt=self.context.get_all_context(), 
-                deps=None, 
+                user_prompt=self.context.get_all_context(),
+                deps=None,
                 message_history="",
-                usage=usage_judge, 
+                usage=usage_judge,
                 usage_limits=usage_limits_judge
             )
 

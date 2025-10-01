@@ -1,8 +1,8 @@
-    
 from rich import print
 from rich.panel import Panel
 from rich.box import ROUNDED
 
+from core import Config
 
 BANNER = """[bold blue]
 oooooooooo.                             .o8  oooooooooooo                   .o8  
@@ -15,13 +15,12 @@ o888bood8P'   `Y8bod8P' `Y888""8o `Y8bod88P" o888ooooood8 o888o o888o `Y8bod88P"
 [/bold blue]                                                                                                                                                       
 """
 
-def print_banner(config):
+def print_banner(config: Config):
     print(BANNER)
     print(Panel(
     f"[bold]OpenAI API Key:[/bold] {'***' if config.openai_api_key else '[red]Not set[/red]'}\n"
     f"[bold]DB URL:[/bold] {config.db_url or '[red]Not set[/red]'}\n"
-    f"[bold]ZAP Proxy API Key:[/bold] {'***' if config.zap_api_key else '[red]Not set[/red]'}\n"
-    f"[bold]App Env:[/bold] {config.app_env}\n"
+    f"[bold]Embedding Model:[/bold] {config.embedding_model}\n"
     f"[bold]Log Level:[/bold] {config.log_level}",
     title="Configuration",
     border_style="blue",
