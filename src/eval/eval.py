@@ -31,21 +31,21 @@ class EvalMetadata(BaseModel):
 
 
 async def eval_agent(
-        model: AIModel, 
-        # evaluators: list[Evaluator], 
-        config: Config, 
-        code_indexer_db: RetrievalDatabaseConnector, 
+        model: AIModel,
+        # evaluators: list[Evaluator],
+        config: Config,
+        code_indexer_db: RetrievalDatabaseConnector,
         sandbox: Sandbox,
-        eval_metadata: EvalMetadata, 
+        eval_metadata: EvalMetadata,
         hard_prompt: bool,
         # choosing between hard and soft prompt
-        guided: bool, 
+        guided: bool,
         # If guided enabled, the evaluation runs also on the subtasks
-        human_intervention: bool, 
+        human_intervention: bool,
         # whether or not ask user to specify information.
-        with_context_engine: bool, 
+        with_context_engine: bool,
         # With context engineering enabled
-        with_code_indexing: bool, 
+        with_code_indexing: bool,
         # With code indexing enabled, code RAG specific to the application
         with_knowledge_base: bool,
         # Knowledge base represents the database RAG added for notes or technical documents.
@@ -56,10 +56,10 @@ async def eval_agent(
     """
 
     workflow_agent = WorkflowRunner(
-        model=model, 
-        config=config, 
-        code_indexer_db=code_indexer_db, 
-        sandbox=sandbox, 
+        model=model,
+        config=config,
+        code_indexer_db=code_indexer_db,
+        sandbox=sandbox,
     )
 
     workflow_agent.add_assets_to_context(eval_metadata.assets_path)
@@ -94,7 +94,7 @@ async def eval_agent(
         workflow_agent.init_webtarget_indexer(target_host)
         web_resources_crawler = await workflow_agent.crawl_target()
         code_sections = await workflow_agent.embed_target()
-        # TODO: better Handling code sections 
+        # TODO: better Handling code sections
         code_chunks = []
         for code_section in code_sections:
             chunk = {
@@ -109,23 +109,38 @@ async def eval_agent(
 
     # if with_knowledge_base:
 
-    # adding assets to context 
+    # adding assets to context
     workflow_agent.context.add_assets_to_context()
 
-    # case if not guided, i.e. not using subtasks 
+    # case if not guided, i.e. not using subtasks
     if not guided:
-        judge_output = await workflow_agent.start_workflow(prompt, target_host, eval_metadata.validation_type, eval_metadata.validation_format)
+        judge_output = await workflow_agent.start_workflow(
+            prompt,
+            target=target_host,
+            validation_type=eval_metadata.validation_type,
+            validation_format=eval_metadata.validation_format
+        )
     else: 
         for subtask in eval_metadata.subtasks: 
             subtask_prompt = f"{subtask.subtask}\n{subtask.question}\n{subtask.hints}"
-            judge_output = await workflow_agent.start_workflow(subtask_prompt, target=target_host)
+            judge_output = await workflow_agent.start_workflow(
+                subtask_prompt,
+                target=target_host,
+                validation_type=eval_metadata.validation_type,
+                validation_format=eval_metadata.validation_format
+            )
 
-async def eval_all_models(models: list[AIModel], evaluators: list[Evaluator], agent: WorkflowRunner, eval_metadata_path: str, output_report: str):
-    """
-    Eval function all models
-    """
-    for model in models:
-        await eval_agent(model=model, evaluators=evaluators, eval_metadata_path=eval_metadata_path,output_report=output_report)
+# async def eval_all_models(models: list[AIModel], evaluators: list[Evaluator], eval_metadata_path: str, output_report: str):
+#     """
+#     Eval function all models
+#     """
+#     for model in models:
+#         await eval_agent(
+#             model=model,
+#             # evaluators=evaluators,
+#             eval_metadata_path=eval_metadata_path,
+#             output_report=output_report
+#         )
 
 
 def run_benchmark_script(run_script_path: str):

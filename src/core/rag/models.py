@@ -64,6 +64,7 @@ class KnowledgeBase(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     file_path = Column(String(500), nullable=False)
+    content_metadata = Column(Text, nullable=False)
     content  = Column(Text, nullable=False)
     embedding = Column(Vector(1536), nullable=False)
     # metadata

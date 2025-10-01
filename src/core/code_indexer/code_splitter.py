@@ -2,6 +2,7 @@ import tree_sitter_javascript as tree_js
 import tree_sitter_typescript as tree_ts
 import tree_sitter_html as tree_html
 import tree_sitter_css as tree_css 
+import tree_sitter_markdown as tree_markdown
 from semantic_text_splitter import CodeSplitter, TextSplitter
 from jsbeautifier import Beautifier
 from typing import List
@@ -26,7 +27,6 @@ class Chunker:
                 splitter = CodeSplitter.from_tiktoken_model(tree_html.language(), self.tiktoken_model, size_chunk)
             elif self.language == 'css':
                 splitter = CodeSplitter.from_tiktoken_model(tree_css.language(), self.tiktoken_model, size_chunk)
-
             beautifier = Beautifier()
             code_content = ""
             with open(self.file_path) as f:
@@ -34,4 +34,11 @@ class Chunker:
             code_beautified = beautifier.beautify(code_content)
 
             chunks = splitter.chunks(code_beautified)
+            return chunks
+        else:
+            if self.language == 'markdown':
+                splitter = TextSplitter.from_tiktoken_model(tree_markdown.language(), self.tiktoken_model, size_chunk)
+            with open(self.file_path) as f:
+                document_content = f.read()
+            chunks = splitter.chunks(document_content)
             return chunks

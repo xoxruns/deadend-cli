@@ -19,7 +19,6 @@ class SourceCodeIndexer:
     added to the tree sitter are : 
     - HTML and Javascript 
     """
-
     def __init__(self, target: str) -> None:
         """
         Initializes the SourceCodeIndexer object.
@@ -78,7 +77,7 @@ class SourceCodeIndexer:
                         code_chunker = Chunker('/'.join([subdir, file]), 'javascript', True, tiktoken_model='gpt-4o-mini')
                         file_chunks = code_chunker.chunk_file(2000)
                         url_path = subdir.replace(str(self.source_code_path), "")
-                        if file_chunks != None:
+                        if file_chunks is not None:
                             new_cs = await self._embed_chunks(
                                 openai=openai,
                                 embedding_model=embedding_model, 
@@ -92,7 +91,7 @@ class SourceCodeIndexer:
                         code_chunker = Chunker('/'.join([subdir, file]), 'html', True, tiktoken_model='gpt-4o-mini')
                         file_chunks = code_chunker.chunk_file(2000)
                         url_path = subdir.replace(str(self.source_code_path), "")
-                        if file_chunks != None:
+                        if file_chunks is not None:
                             new_cs = await self._embed_chunks(
                                 openai=openai,
                                 embedding_model=embedding_model, 

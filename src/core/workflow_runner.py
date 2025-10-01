@@ -9,7 +9,8 @@ from core import Config
 from core.models import AIModel
 from core.sandbox import Sandbox
 from core.rag.db_cruds import RetrievalDatabaseConnector
-from core.tools.code_indexer import SourceCodeIndexer
+from core.embedders.code_indexer import SourceCodeIndexer
+from core.embedders.knowledge_base_indexer import KnowledgeBaseIndexer
 from core.context.context_engine import ContextEngine
 from core.utils.structures import ShellRunner, WebappreconDeps
 from core.agents import (
@@ -76,8 +77,24 @@ class WorkflowRunner:
         return await self.code_indexer.crawl_target()
 
     async def embed_target(self):
-        return await self.code_indexer.embed_webpage(openai_api_key=self.config.openai_api_key, embedding_model=self.config.embedding_model)
- 
+        return await self.code_indexer.embed_webpage(
+            openai_api_key=self.config.openai_api_key,
+            embedding_model=self.config.embedding_model
+            )
+    
+    def knowledge_base_init(self, folder_path: str):
+        self.knowledge_base_path = folder_path
+        self.knowledge_base_indexer = KnowledgeBaseIndexer(
+            documents_path=self.knowledge_base_path,
+            files_ignored=[]
+        )
+    
+    async def knowledge_base_index(self):
+        return await self.knowledge_base_indexer.embed_documents(
+            openai_api_key=self.config.openai_api_key,
+            embedding_model=self.config.embedding_model
+        )
+
     def register_agents(self, agents: list[str]) -> None:
         self.available_agents = agents
 

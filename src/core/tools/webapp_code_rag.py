@@ -1,10 +1,10 @@
 from pydantic_ai import RunContext
-
 from core.utils.structures import RagDeps
 
-
-
-async def webapp_code_rag(context: RunContext[RagDeps], search_query: str) -> str:
+async def webapp_code_rag(
+        context: RunContext[RagDeps],
+        search_query: str
+    ) -> str:
     res = ""
     if len(context.deps.target) > 1:
         search_query += '\n The target supplied is: ' + context.deps.target

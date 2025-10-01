@@ -48,6 +48,7 @@ dependencies = [
     "tree-sitter-html>=0.23.2",
     "tree-sitter-javascript>=0.23.1",
     "tree-sitter-languages>=1.10.2",
+    "tree-sitter-markdown>=0.5.1",
     "tree-sitter-typescript>=0.23.2",
     "typer>=0.15.4",
     "zaproxy>=0.4.0",

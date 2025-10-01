@@ -2,19 +2,17 @@ import asyncio
 import asyncpg
 import httpx
 import pydantic_core
-from uuid import uuid4
 from pydantic import TypeAdapter
 from openai import AsyncOpenAI
 
 from .database import database_connect, CodeSection, DB_SCHEMA
-from src.tools.crawler import WebpageCrawler
 
 section_ta = TypeAdapter(CodeSection)
 
 async def insert_webpage(
         sem: asyncio.Semaphore,
         openai: AsyncOpenAI,
-        pool: asyncpg.Pool, 
+        pool: asyncpg.Pool,
         code_section: CodeSection
 ) -> None:
     async with sem:
@@ -44,38 +42,34 @@ async def insert_webpage(
 
 
 
-async def build_search_db(zap_api_key: str, url: str):
-    # adding crawler call 
-    crawler = WebpageCrawler(zap_api_key) 
-    urls = await crawler.async_start_spider(url)
-    code_sections = list()
-    for url in urls:
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.get(url)
-                response.raise_for_status()
-                section_json = {
-                    'url_path': url,
-                    'title': url.split('/')[-1],
-                    'content': response.content.decode(), 
-                }
-                print(section_json)
-                code_section = CodeSection(url_path=url, title=url.split('/')[-1], content=response.content.decode(), embeddings=None)
-                code_sections.append(code_section)
-            except Exception as e:
-                print(e)
-    
-    openai = AsyncOpenAI()
-
-    # create schema
-    async with database_connect(True) as pool:
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(DB_SCHEMA) 
-        
-        sem = asyncio.Semaphore(10)
-        async with asyncio.TaskGroup() as tg:
-            for code_section in code_sections:
-                tg.create_task(insert_webpage(sem=sem, openai=openai, pool=pool, code_section=code_section))
-            
-    return 1
+# async def build_search_db(zap_api_key: str, url: str):
+#     # adding crawler call 
+#     crawler = WebpageCrawler(zap_api_key) 
+#     urls = await crawler.async_start_spider(url)
+#     code_sections = list()
+#     for url in urls:
+#         async with httpx.AsyncClient() as client:
+#             try:
+#                 response = await client.get(url)
+#                 response.raise_for_status()
+#                 section_json = {
+#                     'url_path': url,
+#                     'title': url.split('/')[-1],
+#                     'content': response.content.decode(), 
+#                 }
+#                 print(section_json)
+#                 code_section = CodeSection(url_path=url, title=url.split('/')[-1], content=response.content.decode(), embeddings=None)
+#                 code_sections.append(code_section)
+#             except Exception as e:
+#                 print(e)
+    # openai = AsyncOpenAI()
+    # # create schema
+    # async with database_connect(True) as pool:
+    #     async with pool.acquire() as conn:
+    #         async with conn.transaction():
+    #             await conn.execute(DB_SCHEMA)
+    #     sem = asyncio.Semaphore(10)
+    #     async with asyncio.TaskGroup() as tg:
+    #         for code_section in code_sections:
+    #             tg.create_task(insert_webpage(sem=sem, openai=openai, pool=pool, code_section=code_section))
+    # return 1

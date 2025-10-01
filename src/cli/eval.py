@@ -3,13 +3,10 @@ import socket
 import json
 
 from src.cli.console import console_printer
-
 from core import Config, init_rag_database, sandbox_setup
 from eval.eval import EvalMetadata, eval_agent
 from eval.ctf_evaluator import CtfEvaluator
 from core.models import ModelRegistry
-
-
 
 async def eval_interface(
         config: Config,
