@@ -20,15 +20,16 @@ from rich.console import Console
 console = Console()
 
 
-def check_docker():
+def check_docker(client: docker.DockerClient) -> bool:
     """Check if Docker daemon is running using the Docker Python API.
     
+    Args:
+        client: Docker client instance
+        
     Returns:
         bool: True if Docker daemon is available and running, False otherwise
     """
     try:
-        # Initialize Docker client from environment
-        client = docker.from_env()
         # Ping the Docker daemon to check if it's responsive
         client.ping()
         return True
@@ -42,14 +43,16 @@ def check_docker():
         return False
 
 
-def check_pgvector_container():
+def check_pgvector_container(client: docker.DockerClient) -> bool:
     """Check if pgvector container is running.
     
+    Args:
+        client: Docker client instance
+        
     Returns:
         bool: True if pgvector container is running, False otherwise
     """
     try:
-        client = docker.from_env()
         container = client.containers.get("deadend_pg")
         return container.status == "running"
     except NotFound:
@@ -59,15 +62,16 @@ def check_pgvector_container():
         return False
 
 
-def setup_pgvector_database():
+def setup_pgvector_database(client: docker.DockerClient) -> bool:
     """Setup pgvector database using Docker API.
     
+    Args:
+        client: Docker client instance
+        
     Returns:
         bool: True if setup successful, False otherwise
     """
     try:
-        client = docker.from_env()
-        
         # Check if container already exists
         try:
             existing_container = client.containers.get("deadend_pg")
@@ -83,18 +87,18 @@ def setup_pgvector_database():
                 return True
         except NotFound:
             pass  # Container doesn't exist, create new one
-        
+
         # Create postgres_data directory in cache if it doesn't exist
         cache_dir = Path.home() / ".cache" / "deadend"
         postgres_data_dir = cache_dir / "postgres_data"
         postgres_data_dir.mkdir(parents=True, exist_ok=True)
-        
+
         console.print("[blue]Setting up pgvector database...[/blue]")
-        
+
         # Pull the pgvector image
         console.print("Pulling pgvector image...")
         client.images.pull("pgvector/pgvector:pg17")
-        
+
         # Create and run the container
         container = client.containers.run(
             "pgvector/pgvector:pg17",
@@ -109,11 +113,11 @@ def setup_pgvector_database():
             detach=True,
             remove=False
         )
-        
+
         # Wait for container to be ready
         console.print("Waiting for database to be ready...")
         time.sleep(10)
-        
+
         # Check if container is running
         container.reload()
         if container.status == "running":
@@ -132,14 +136,38 @@ def setup_pgvector_database():
         return False
 
 
-def stop_pgvector_container():
+def pull_sandboxed_kali_image(client: docker.DockerClient) -> bool:
+    """Pull the sandboxed Kali image.
+    
+    Args:
+        client: Docker client instance
+        
+    Returns:
+        bool: True if pull successful, False otherwise
+    """
+    try:
+        console.print("[blue]Pulling sandboxed Kali image...[/blue]")
+        client.images.pull("xoxruns/sandboxed_kali")
+        console.print("[green]Sandboxed Kali image pulled successfully.[/green]")
+        return True
+    except DockerException as e:
+        console.print(f"[red]Error pulling sandboxed Kali image: {e}[/red]")
+        return False
+    except (OSError, ConnectionError) as e:
+        console.print(f"[red]Connection error pulling sandboxed Kali image: {e}[/red]")
+        return False
+
+
+def stop_pgvector_container(client: docker.DockerClient) -> bool:
     """Stop the pgvector container.
     
+    Args:
+        client: Docker client instance
+        
     Returns:
         bool: True if stopped successfully, False otherwise
     """
     try:
-        client = docker.from_env()
         container = client.containers.get("deadend_pg")
         if container.status == "running":
             console.print("[blue]Stopping pgvector database...[/blue]")
@@ -168,21 +196,36 @@ def init_cli_config():
     Returns:
         Path: The path to the created configuration file
     """
+    # Create a single Docker client instance for all operations
+    try:
+        docker_client = docker.from_env()
+    except DockerException as e:
+        console.print(f"[red]Failed to initialize Docker client: {e}[/red]")
+        console.print("Please install Docker from: https://docs.docker.com/get-docker/")
+        console.print("Make sure Docker daemon is running.")
+        raise typer.Exit(1)
+    
     # Check Docker availability first - exit if not available
-    if not check_docker():
+    if not check_docker(docker_client):
         console.print("\n[red]Docker is required for this application to function properly.[/red]")
         console.print("Please install and start Docker, then run this command again.")
         raise typer.Exit(1)
     
     # Check and setup pgvector database
-    if not check_pgvector_container():
+    if not check_pgvector_container(docker_client):
         console.print("\n[blue]pgvector database not found. Setting up...[/blue]")
-        if not setup_pgvector_database():
+        if not setup_pgvector_database(docker_client):
             console.print("\n[red]Failed to setup pgvector database.[/red]")
             console.print("Please check Docker logs and try again.")
             raise typer.Exit(1)
     else:
         console.print("[green]pgvector database is already running.[/green]")
+    
+    # Pull sandboxed Kali image
+    console.print("\n[blue]Setting up sandboxed Kali image...[/blue]")
+    if not pull_sandboxed_kali_image(docker_client):
+        console.print("\n[yellow]Warning: Failed to pull sandboxed Kali image.[/yellow]")
+        console.print("Some features may not work properly. You can try again later.")
     
     cache_dir = Path.home() / ".cache" / "deadend"
     cache_dir.mkdir(parents=True, exist_ok=True)

@@ -73,7 +73,12 @@ def chat(
         )
     finally:
         # Stop pgvector container when chat ends
-        stop_pgvector_container()
+        try:
+            import docker
+            docker_client = docker.from_env()
+            stop_pgvector_container(docker_client)
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not stop pgvector container: {e}[/yellow]")
 
 
 @app.command()
