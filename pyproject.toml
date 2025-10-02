@@ -1,6 +1,6 @@
 [project]
 name = "deadend-cli"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="Yassine Bargach", email="yassine.bargach@proton.me" },
 ]
@@ -39,8 +39,6 @@ dependencies = [
     "semantic-text-splitter>=0.27.0",
     "sqlalchemy>=2.0.41",
     "tenacity>=9.1.2",
-    "textual>=3.5.0",
-    "textual-dev>=1.7.0",
     "tiktoken>=0.9.0",
     "toml>=0.10.2",
     "tree-sitter<0.22.0",
@@ -54,10 +52,12 @@ dependencies = [
     "zaproxy>=0.4.0",
 ]
 
+[project.scripts]
+deadend-cli = "deadend_cli.main:main"
+
 [dependency-groups]
 dev = [
     "black>=25.1.0",
-    "deadend-cli",
     "flake8>=7.2.0",
     "isort>=6.0.1",
     "pytest>=8.3.5",
@@ -72,7 +72,7 @@ test = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/"]
+packages = ["deadend_cli"]
 
 [build-system]
 requires = ["hatchling"]
@@ -86,7 +86,7 @@ python_functions = ["test_*"]
 adopts = [
     "--strict-markers",
     "--strict-config",
-    "--cov=src",
+    "--cov=deadend_cli",
     "--cov-report=term-missing",
     "--cov-report=html",
 ]
@@ -97,7 +97,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["deadend_cli"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
@@ -108,5 +108,3 @@ exclude_lines = [
     "raise NotImplementedError",
 ]
 
-[tool.uv.sources]
-deadend-cli = { workspace = true }
