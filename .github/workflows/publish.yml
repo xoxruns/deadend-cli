@@ -25,7 +25,7 @@ jobs:
       - name: Install Python 3.12
         run: uv python install 3.12
       - name: Build
-        run: uv build
+        run: uv build --wheel
       # Check that basic features work and we didn't miss to include crucial files
       # - name: Smoke test (wheel)
       #   run: uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
