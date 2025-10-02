@@ -1,6 +1,6 @@
 [project]
 name = "deadend-cli"
-version = "0.0.3"
+version = "0.0.1"
 authors = [
   { name="Yassine Bargach", email="yassine.bargach@proton.me" },
 ]
