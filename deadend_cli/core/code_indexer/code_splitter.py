@@ -8,15 +8,15 @@ This module provides functionality to split and chunk source code files
 using tree-sitter parsers for various programming languages, enabling
 semantic code analysis and embedding generation for security research.
 """
-
+from typing import List
 import tree_sitter_javascript as tree_js
 import tree_sitter_typescript as tree_ts
 import tree_sitter_html as tree_html
-import tree_sitter_css as tree_css 
+import tree_sitter_css as tree_css
 import tree_sitter_markdown as tree_markdown
 from semantic_text_splitter import CodeSplitter, TextSplitter
 from jsbeautifier import Beautifier
-from typing import List
+
 
 
 class Chunker:
