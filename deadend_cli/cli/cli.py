@@ -10,6 +10,7 @@ Defines commands to run interactive chat and evaluation agents.
 import asyncio
 from typing import List
 import typer
+import docker
 from rich.console import Console
 
 from deadend_cli.core import config_setup
@@ -44,14 +45,15 @@ def chat(
         openapi_spec: Path to an OpenAPI spec to load for context.
     """
     # Check Docker availability first
-    if not check_docker():
+    docker_client = docker.from_env()
+    if not check_docker(docker_client):
         console.print("\n[red]Docker is required for this application to function properly.[/red]")
         console.print("Please install Docker from: https://docs.docker.com/get-docker/")
         console.print("Make sure Docker daemon is running, then run this command again.")
         raise typer.Exit(1)
     
     # Check pgvector database
-    if not check_pgvector_container():
+    if not check_pgvector_container(docker_client):
         console.print("\n[red]pgvector database is not running.[/red]")
         console.print("Please run 'deadend-cli init' to set up the required services.")
         raise typer.Exit(1)
@@ -74,10 +76,8 @@ def chat(
     finally:
         # Stop pgvector container when chat ends
         try:
-            import docker
-            docker_client = docker.from_env()
             stop_pgvector_container(docker_client)
-        except Exception as e:
+        except (docker.errors.DockerException, OSError, ConnectionError) as e:
             console.print(f"[yellow]Warning: Could not stop pgvector container: {e}[/yellow]")
 
 
