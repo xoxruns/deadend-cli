@@ -1,16 +1,27 @@
 
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Web resource extraction and analysis tool for security research.
+
+This module provides functionality to extract, analyze, and process web
+resources including HTML content, JavaScript files, CSS stylesheets, and
+other web assets for security analysis and vulnerability research.
+"""
+
 import asyncio
 import json
 import os
 import pathlib
 import time
+from dataclasses import dataclass
 from urllib.parse import urlparse
 from typing import List, Dict
 
 import aiofiles
 import aiohttp
 from playwright.async_api import async_playwright
-from dataclasses import dataclass
 
 @dataclass
 class Resource:

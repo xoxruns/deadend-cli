@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""AI model registry for managing different language model providers.
+
+This module provides a registry system for managing AI model instances from
+various providers (OpenAI, Anthropic, Google), including configuration,
+initialization, and provider-specific model abstractions.
+"""
+
 from typing import Dict
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.models.anthropic import AnthropicModel

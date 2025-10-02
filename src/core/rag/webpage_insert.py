@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Web page insertion and processing for the RAG system.
+
+This module provides functionality to insert and process web page content
+into the RAG database, including content extraction, embedding generation,
+and storage for semantic search capabilities in security research.
+"""
+
 import asyncio
 import asyncpg
 import httpx

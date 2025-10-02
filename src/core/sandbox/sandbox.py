@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Docker-based sandbox for secure command execution and isolation.
+
+This module provides a sandbox implementation using Docker containers with
+gVisor runtime for secure execution of security research commands, ensuring
+isolation and preventing system compromise during vulnerability testing.
+"""
+
 import docker
 from docker.errors import ImageNotFound, NotFound
 import docker.errors

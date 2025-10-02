@@ -1,8 +1,13 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""HTTP request handling and raw socket communication utilities."""
+
 import socket
 import ssl
 from asgiref.sync import sync_to_async
 import httptools
-
 
 from pydantic_ai import RunContext
 from cli.console import console_printer
@@ -32,7 +37,7 @@ class Requester:
                 "Invalid HTTP request. The following issues were found:\n"
                 f"{reason}\n\n--- Raw Request ---\n{request_data}"
             )
-            console_printer.print(error_message)
+            # console_printer.print(error_message)
             return error_message
 
         console_printer.print(request_data)
@@ -114,7 +119,6 @@ def parse_http_request(raw_data):
         parser = httptools.HttpRequestParser(request_parser)
         parser.feed_data(raw_data)
         if not request_parser.complete:
-            print("Incomplete HTTP request.")
             return None
         # capture method name if available
         try:
@@ -124,11 +128,11 @@ def parse_http_request(raw_data):
         except Exception:
             pass
         if not _is_valid_request(request_parser):
-            return None 
+            return None
         return request_parser
     except httptools.HttpParserError:
-        print("HTTPParserError : Malformed HTTP request.")
-        return None 
+        # print("HTTPParserError : Malformed HTTP request.")
+        return None
     
 
 def analyze_http_request_text(raw_request_text: str) -> tuple[bool, dict]:

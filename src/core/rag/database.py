@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Database connection and management for the security research framework.
+
+This module provides database connectivity, schema management, and data
+processing utilities for storing and retrieving security research data,
+including code sections, embeddings, and analysis results.
+"""
+
 import asyncio
 import asyncpg
 from typing import List

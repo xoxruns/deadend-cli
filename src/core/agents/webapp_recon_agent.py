@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Web application reconnaissance agent for information gathering and analysis.
+
+This module implements an AI agent that performs comprehensive reconnaissance
+on web applications, including directory enumeration, technology detection,
+vulnerability scanning, and information gathering for security assessments.
+"""
+
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from pydantic_ai.usage import Usage, UsageLimits

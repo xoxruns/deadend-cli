@@ -1,8 +1,20 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Web application code retrieval-augmented generation (RAG) tool.
+
+This module provides a tool for performing semantic search over indexed
+web application source code, enabling AI agents to retrieve relevant
+code snippets and documentation for security analysis and research.
+"""
+
 from pydantic_ai import RunContext
-from core.utils.structures import RagDeps
+from core.utils.structures import RagDeps, WebappreconDeps
+from typing import Union
 
 async def webapp_code_rag(
-        context: RunContext[RagDeps],
+        context: RunContext[Union[RagDeps, WebappreconDeps]],
         search_query: str
     ) -> str:
     res = ""
@@ -21,6 +33,7 @@ async def webapp_code_rag(
 
     results = await context.deps.rag.similarity_search_code_chunk(
         query_embedding=embedding, 
+        session_id=context.deps.session_id,
         limit=5
     )
     for chunk, similarity in results: 

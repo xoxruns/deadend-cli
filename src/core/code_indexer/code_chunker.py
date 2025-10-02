@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Advanced code chunking system with token-aware splitting.
+
+This module provides sophisticated code chunking functionality that respects
+token boundaries, language-specific patterns, and semantic structure for
+optimal code analysis and embedding generation in security research.
+"""
+
 import tiktoken
 from typing import List, Tuple
 from tree_sitter import Node, Tree

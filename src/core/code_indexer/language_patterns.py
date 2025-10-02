@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Language-specific patterns for code analysis and chunking.
+
+This module defines language-specific patterns for various programming languages,
+including declaration patterns, comment patterns, and exclusion patterns used
+in code analysis and semantic chunking for security research.
+"""
+
 from pydantic import BaseModel
 
 class LanguagePatterns(BaseModel):

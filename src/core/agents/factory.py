@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Agent factory for creating and managing AI agent instances.
+
+This module provides a factory pattern implementation for creating and
+configuring AI agents with proper error handling, retry logic, and
+usage tracking for the security research framework.
+"""
+
 from pydantic_ai import Agent
 from pydantic_ai.usage import Usage, UsageLimits
 from typing import Any

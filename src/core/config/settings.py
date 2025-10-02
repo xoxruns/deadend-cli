@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Configuration management system for the security research framework.
+
+This module provides configuration loading, validation, and management
+functionality, supporting both environment variables and TOML configuration
+files with caching and validation capabilities.
+"""
+
 import os
 from pathlib import Path
 from dotenv import load_dotenv

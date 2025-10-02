@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Sandboxed shell execution tool for secure command execution.
+
+This module provides a tool for executing shell commands within a sandboxed
+environment, ensuring security and isolation during security research tasks
+while capturing command output and execution logs.
+"""
+
 from typing import Dict
 
 from pydantic_ai import RunContext

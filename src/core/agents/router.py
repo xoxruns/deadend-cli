@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Routing agent for directing workflow execution between different AI agents.
+
+This module implements an AI agent that analyzes the current state of security
+research workflows and determines which agent should be invoked next based on
+the context, progress, and requirements of the ongoing assessment.
+"""
+
 from pydantic import BaseModel
 from typing import Dict
 

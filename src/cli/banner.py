@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Application banner and branding display module.
+
+This module provides the ASCII art banner and branding display functionality
+for the security research CLI application, including rich text formatting
+and visual presentation elements.
+"""
+
 from rich import print
 from rich.panel import Panel
 from rich.box import ROUNDED

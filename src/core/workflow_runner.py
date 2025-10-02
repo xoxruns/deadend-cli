@@ -1,5 +1,17 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Workflow execution engine for orchestrating security research tasks.
+
+This module provides the main workflow runner that coordinates AI agents,
+manages task execution, handles file operations, and integrates with various
+security tools and databases for comprehensive security assessments.
+"""
+
 import os
 import mimetypes
+import uuid
 from pydantic_ai.usage import Usage, UsageLimits
 from openai import AsyncOpenAI
 import docker
@@ -17,8 +29,8 @@ from core.agents import (
     AgentRunner, 
     Planner, RagDeps, PlannerOutput,
     RouterAgent, RouterOutput,
-    JudgeAgent, JudgeOutput,
-    WebappReconAgent, RequesterOutput
+    JudgeAgent,
+    WebappReconAgent
 )
 
 # TODO: Handling message history to be able to use it in a better way
@@ -52,6 +64,8 @@ class WorkflowRunner:
         context: Context engine for managing workflow state
         goal_achieved: Flag indicating if the workflow goal has been completed
         assets_folder: Path to the assets folder
+        session_id: Unique identifier for this workflow session
+        interrupted: Flag indicating if the workflow has been interrupted
     """
     config: Config
     model: AIModel
@@ -60,6 +74,8 @@ class WorkflowRunner:
     context: ContextEngine = ContextEngine()
     goal_achieved: bool = False
     assets_folder: str
+    session_id: uuid.UUID
+    interrupted: bool = False
     
     def __init__(
             self,
@@ -80,6 +96,27 @@ class WorkflowRunner:
         self.model = model
         self.code_indexer_db = code_indexer_db
         self.sandbox = sandbox
+        self.session_id = uuid.uuid4()
+        self.interrupted = False
+
+    def interrupt_workflow(self) -> None:
+        """Interrupt the workflow execution.
+        
+        This method sets the interrupted flag to True, which will cause
+        the workflow to stop at the next check point.
+        """
+        self.interrupted = True
+        console_printer.print("[yellow]Workflow interruption requested...[/yellow]")
+
+    def reset_workflow_state(self) -> None:
+        """Reset the workflow state for a new execution.
+        
+        This method resets the goal_achieved flag and interrupted flag
+        to allow for a fresh workflow execution.
+        """
+        self.goal_achieved = False
+        self.interrupted = False
+        console_printer.print("[green]Workflow state reset for new execution[/green]")
 
     def _set_assets(self, assets_folder: str) -> None:
         """Set the assets folder path.
@@ -117,7 +154,7 @@ class WorkflowRunner:
             target: URL of the web target to index
         """
         self.target = target
-        self.code_indexer = SourceCodeIndexer(target=self.target)
+        self.code_indexer = SourceCodeIndexer(target=self.target, session_id=self.session_id)
 
     async def crawl_target(self):
         """Crawl the web target to gather resources.
@@ -190,7 +227,14 @@ class WorkflowRunner:
             
         Returns:
             String representation of the planned tasks
+            
+        Raises:
+            InterruptedError: If the workflow is interrupted during planning
         """
+        # Check for interruption before planning
+        if self.interrupted:
+            raise InterruptedError("Workflow interrupted before planning")
+            
         openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
         self.context.set_target(target=target)
         self.planner = Planner(
@@ -201,16 +245,32 @@ class WorkflowRunner:
         usage_planner = Usage()
         usage_limits_planner = UsageLimits()
 
-        resp = await self.planner.run(
-            user_prompt=goal,
-            message_history="",
-            usage=usage_planner,
-            usage_limits=usage_limits_planner,
-            rag=self.code_indexer_db,
-            openai=openai_embedder
-        )
-        self.context.set_tasks(resp.output.tasks)
-        return resp.output.tasks
+        try:
+            resp = await self.planner.run(
+                user_prompt=goal,
+                message_history="",
+                usage=usage_planner,
+                usage_limits=usage_limits_planner,
+                rag=self.code_indexer_db,
+                openai=openai_embedder,
+                session_id=self.session_id
+            )
+            
+            # Check for interruption after planning
+            if self.interrupted:
+                raise InterruptedError("Workflow interrupted after planning")
+                
+            self.context.set_tasks(resp.output.tasks)
+            return resp.output.tasks
+            
+        except InterruptedError:
+            # Re-raise interruption errors
+            raise
+        except Exception as e:
+            # Check if interrupted during exception handling
+            if self.interrupted:
+                raise InterruptedError("Workflow interrupted during planning") from e
+            raise
 
     async def route_task(self, prompt: str) -> RouterOutput:
         """Route a task to the appropriate agent.
@@ -220,10 +280,17 @@ class WorkflowRunner:
             
         Returns:
             Router output containing the selected agent
+            
+        Raises:
+            InterruptedError: If the workflow is interrupted during routing
         """
+        # Check for interruption before routing
+        if self.interrupted:
+            raise InterruptedError("Workflow interrupted before routing")
+            
         self.router = RouterAgent(
-            model=self.model, 
-            deps_type=None, 
+            model=self.model,
+            deps_type=None,
             available_agents=self.available_agents,
             tools=[]
         )
@@ -231,16 +298,30 @@ class WorkflowRunner:
         usage_router = Usage()
         usage_limits_router = UsageLimits()
 
-        resp = await self.router.run(
-            user_prompt=prompt + self.context.get_all_context(),
-            deps=None, 
-            message_history="", 
-            usage=usage_router, 
-            usage_limits=usage_limits_router
-        )
+        try:
+            resp = await self.router.run(
+                user_prompt=prompt + self.context.get_all_context(),
+                deps=None, 
+                message_history="", 
+                usage=usage_router, 
+                usage_limits=usage_limits_router
+            )
+            
+            # Check for interruption after routing
+            if self.interrupted:
+                raise InterruptedError("Workflow interrupted after routing")
 
-        self.context.add_next_agent(resp.output)
-        return resp.output
+            self.context.add_next_agent(resp.output)
+            return resp.output
+            
+        except InterruptedError:
+            # Re-raise interruption errors
+            raise
+        except Exception as e:
+            # Check if interrupted during exception handling
+            if self.interrupted:
+                raise InterruptedError("Workflow interrupted during routing") from e
+            raise
 
     def _get_agent(self, agent_name: str) -> AgentRunner:
         """Get an agent instance by name.
@@ -276,54 +357,89 @@ class WorkflowRunner:
             
         Returns:
             Agent response output
+            
+        Raises:
+            InterruptedError: If the workflow is interrupted during execution
         """
+        # Check for interruption before starting agent execution
+        if self.interrupted:
+            raise InterruptedError("Workflow interrupted before agent execution")
+            
         agent = self._get_agent(agent_name=agent_name)
         usage_agent = Usage()
         usage_limits_agent = UsageLimits()
 
-        if agent.name == "planner_agent":
-            openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
-            rag_deps = RagDeps(
-                openai=openai_embedder,
-                rag=self.code_indexer_db,
-                target=self.target
-            )
-            resp = await agent.run(
-                user_prompt=prompt + self.context.get_all_context(),
-                message_history="",
-                usage=usage_agent,
-                deps=rag_deps,
-                usage_limits=usage_limits_agent
-            )
-        elif agent_name == "webapp_recon":
-            openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
-            shell_runner = ShellRunner("session_agent", self.sandbox)
+        try:
+            if agent.name == "planner_agent":
+                # Check for interruption before planner execution
+                if self.interrupted:
+                    raise InterruptedError("Workflow interrupted before planner execution")
+                    
+                openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
+                rag_deps = RagDeps(
+                    openai=openai_embedder,
+                    rag=self.code_indexer_db,
+                    target=self.target,
+                    session_id=self.session_id
+                )
+                resp = await agent.run(
+                    user_prompt=prompt + self.context.get_all_context(),
+                    message_history="",
+                    usage=usage_agent,
+                    deps=rag_deps,
+                    usage_limits=usage_limits_agent
+                )
+            elif agent_name == "webapp_recon":
+                # Check for interruption before webapp recon execution
+                if self.interrupted:
+                    raise InterruptedError("Workflow interrupted before webapp recon execution")
+                    
+                openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
+                shell_runner = ShellRunner("session_agent", self.sandbox)
 
-            webapprecon_deps = WebappreconDeps(
-                openai=openai_embedder,
-                rag=self.code_indexer_db,
-                target=self.target,
-                shell_runner=shell_runner
-            )
-            resp = await agent.run(
-                user_prompt=prompt + self.context.get_all_context(),
-                message_history="",
-                usage=usage_agent,
-                deps=webapprecon_deps,
-                usage_limits=usage_limits_agent
-            )
-        else:
-            resp = await agent.run(
-                user_prompt=prompt + self.context.get_all_context(),
-                deps=None,
-                message_history="",
-                usage=usage_agent,
-                usage_limits=usage_limits_agent
-            )
+                webapprecon_deps = WebappreconDeps(
+                    openai=openai_embedder,
+                    rag=self.code_indexer_db,
+                    target=self.target,
+                    shell_runner=shell_runner,
+                    session_id=self.session_id
+                )
+                resp = await agent.run(
+                    user_prompt=prompt + self.context.get_all_context(),
+                    message_history="",
+                    usage=usage_agent,
+                    deps=webapprecon_deps,
+                    usage_limits=usage_limits_agent
+                )
+            else:
+                # Check for interruption before other agent execution
+                if self.interrupted:
+                    raise InterruptedError("Workflow interrupted before agent execution")
+                    
+                resp = await agent.run(
+                    user_prompt=prompt + self.context.get_all_context(),
+                    deps=None,
+                    message_history="",
+                    usage=usage_agent,
+                    usage_limits=usage_limits_agent
+                )
 
-        agent_response = resp.output
-        self.context.add_agent_response(agent_response)
-        return agent_response
+            # Check for interruption after agent execution
+            if self.interrupted:
+                raise InterruptedError("Workflow interrupted after agent execution")
+
+            agent_response = resp.output
+            self.context.add_agent_response(agent_response)
+            return agent_response
+            
+        except InterruptedError:
+            # Re-raise interruption errors
+            raise
+        except Exception as e:
+            # Check if interrupted during exception handling
+            if self.interrupted:
+                raise InterruptedError("Workflow interrupted during agent execution") from e
+            raise
 
     async def start_workflow(self, prompt: str, target: str, validation_type: str | None, validation_format: str | None):
         """Start the main workflow execution.
@@ -341,9 +457,13 @@ class WorkflowRunner:
             Final judge output from the workflow execution
         """
         # Plan the tasks
-        tasks = await self.plan_tasks(goal=prompt, target=target)
-        yield tasks
-        
+        try:
+            tasks = await self.plan_tasks(goal=prompt, target=target)
+            yield tasks
+        except InterruptedError as e:
+            console_printer.print(f"[yellow]Workflow interrupted during planning: {e}[/yellow]")
+            return
+
         if validation_type is None:
             validation_type = "canary"
 
@@ -357,25 +477,58 @@ class WorkflowRunner:
         )
         usage_judge = Usage()
         usage_limits_judge = UsageLimits()
-
+        judge_output = ""
         iteration = 0
-        while not self.goal_achieved and iteration < MAX_ITERATION: 
+        while not self.goal_achieved and iteration < MAX_ITERATION and not self.interrupted:
+            # Check for interruption before each major step
+            if self.interrupted:
+                console_printer.print("[yellow]Workflow interrupted by user[/yellow]")
+                break
+          
             # Route task to appropriate agent
-            agent_router = await self.route_task(prompt=prompt)
-            yield agent_router
+            try:
+                agent_router = await self.route_task(prompt=prompt)
+                yield agent_router
+            except InterruptedError as e:
+                console_printer.print(f"[yellow]Workflow interrupted during routing: {e}[/yellow]")
+                break
+
+            # Check for interruption after routing
+            if self.interrupted:
+                console_printer.print("[yellow]Workflow interrupted by user[/yellow]")
+                break
 
             # Execute the selected agent
-            agent_response = await self.run_agent(self.context.next_agent, prompt)
-            yield agent_response
+            try:
+                agent_response = await self.run_agent(self.context.next_agent, prompt)
+                yield agent_response
+            except InterruptedError as e:
+                console_printer.print(f"[yellow]Workflow interrupted during agent execution: {e}[/yellow]")
+                break
+
+            # Check for interruption after agent execution
+            if self.interrupted:
+                console_printer.print("[yellow]Workflow interrupted by user[/yellow]")
+                break
 
             iteration += 1
-            judge_output = await judge_agent.run(
-                user_prompt=self.context.get_all_context(),
-                deps=None,
-                message_history="",
-                usage=usage_judge,
-                usage_limits=usage_limits_judge
-            )
+            
+            # Check for interruption before judge execution
+            if self.interrupted:
+                console_printer.print("[yellow]Workflow interrupted before judge execution[/yellow]")
+                break
+                
+            try:
+                judge_output = await judge_agent.run(
+                    user_prompt=self.context.get_all_context(),
+                    deps=None,
+                    message_history="",
+                    usage=usage_judge,
+                    usage_limits=usage_limits_judge
+                )
+            except InterruptedError as e:
+                console_printer.print(f"[yellow]Workflow interrupted during judge execution: {e}[/yellow]")
+                break
 
             judge_str = str(judge_output)
             self.context.add_agent_response(judge_str)

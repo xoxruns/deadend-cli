@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Sandbox manager for orchestrating multiple Docker-based sandbox instances.
+
+This module provides management functionality for multiple sandbox instances,
+including lifecycle management, status monitoring, and resource cleanup for
+secure command execution environments.
+"""
+
 import docker
 import uuid
 from ..sandbox.sandbox import Sandbox, SandboxStatus

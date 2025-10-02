@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Knowledge base retrieval-augmented generation (RAG) tool.
+
+This module provides a tool for performing semantic search over the knowledge
+base, enabling AI agents to retrieve relevant security research information,
+documentation, and best practices for security assessments.
+"""
+
 from pydantic_ai import RunContext
 from core.utils.structures import RagDeps
 

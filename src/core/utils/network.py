@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Network utilities for target validation and connectivity testing.
+
+This module provides network utility functions for checking target availability,
+connectivity, and response validation for security research and web application
+testing workflows.
+"""
+
 import aiohttp
 
 

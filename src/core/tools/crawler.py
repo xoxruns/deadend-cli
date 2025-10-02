@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Web page crawler for automated web application discovery and mapping.
+
+This module provides a web crawler that uses ZAP integration to discover
+and map web application structures, including directories, endpoints, and
+resources for comprehensive security assessment coverage.
+"""
+
 import time
 
 from .zap_connector import ZapConnector, zap_to_async

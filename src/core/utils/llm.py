@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Language model utilities and helper functions for AI interactions.
+
+This module provides utility functions and helper methods for working with
+language models, including prompt processing, response parsing, and
+model-specific functionality for the security research framework.
+"""
+
 # from anthropic import Anthropic
 # from typing import Dict, List, Union
 import re

@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Pydantic schemas for web resource data structures.
+
+This module defines Pydantic models for web resource chunks, including
+metadata, content, and processing information for security research
+and analysis workflows.
+"""
+
 from pydantic import BaseModel
 from datetime import datetime
 import uuid

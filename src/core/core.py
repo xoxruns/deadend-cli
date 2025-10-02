@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Core initialization and setup functions for the security research framework.
+
+This module provides core initialization functions for setting up configuration,
+database connections, sandbox environments, and model registries required
+for the security research framework to operate.
+"""
+
 from core import Config
 from core.models import ModelRegistry
 from core.sandbox import SandboxManager

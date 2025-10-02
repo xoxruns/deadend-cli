@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Context engine for managing workflow state and task coordination.
+
+This module provides context management functionality for security research
+workflows, including task tracking, workflow state management, and agent
+routing based on current context and progress.
+"""
+
 from typing import Dict, List
 from core.utils.structures import Task
 

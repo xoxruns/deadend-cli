@@ -1,7 +1,19 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Source code indexing and embedding system for code analysis.
+
+This module provides functionality to index, chunk, and embed source code
+from web applications, enabling semantic search and analysis of codebases
+for security research and vulnerability identification.
+"""
+
 import os
 import re
 from typing import List
 from openai import AsyncOpenAI
+import uuid
 from uuid import uuid4
 from pathlib import Path
 
@@ -19,18 +31,19 @@ class SourceCodeIndexer:
     added to the tree sitter are : 
     - HTML and Javascript 
     """
-    def __init__(self, target: str) -> None:
+    def __init__(self, target: str, session_id: uuid.UUID = None) -> None:
         """
         Initializes the SourceCodeIndexer object.
         
         Args:
             target (str): The URL of the web application to index.
+            session_id (str, optional): Session ID for this indexing session. If None, generates a new one.
         
         This constructor sets up the cache directory for storing crawled data and
         initializes the WebpageCrawler instance for crawling the target website.
         """
         self.target = target
-        self.session_id = uuid4()
+        self.session_id = session_id if session_id else uuid4()
         self._add_session_to_cache()
         self._add_chunk_directory()
         self._load_patterns()
@@ -70,6 +83,7 @@ class SourceCodeIndexer:
         code_chunks = []
         for code_section in code_sections:
             chunk = {
+                    "session_id": self.session_id,
                     "file_path": code_section.url_path, 
                     "language": code_section.title, 
                     "code_content": str(code_section.content), 

@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Code splitting and chunking system for source code analysis.
+
+This module provides functionality to split and chunk source code files
+using tree-sitter parsers for various programming languages, enabling
+semantic code analysis and embedding generation for security research.
+"""
+
 import tree_sitter_javascript as tree_js
 import tree_sitter_typescript as tree_ts
 import tree_sitter_html as tree_html

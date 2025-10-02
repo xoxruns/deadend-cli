@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Interactive chat interface for security research and web application testing.
+
+This module provides a rich terminal-based chat interface that allows users to
+interact with AI agents for security assessments, view real-time results,
+and manage workflow execution through an intuitive conversational interface.
+"""
+
 import time
 import os
 import asyncio
@@ -15,7 +26,7 @@ from prompt_toolkit.widgets import TextArea, Frame, Label
 from prompt_toolkit.layout import Layout as PTKLayout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
-from prompt_toolkit.layout.containers import HSplit, VSplit
+from prompt_toolkit.layout.containers import HSplit
 from prompt_toolkit.layout import Dimension as D
 
 
@@ -401,6 +412,7 @@ async def chat_interface(
     def interrupt_agent():
         nonlocal agent_interrupted
         agent_interrupted = True
+        workflow_agent.interrupt_workflow()
         console_printer.print("\n[yellow]Agent interrupted by user (Ctrl+I)[/yellow]")
 
     try:
@@ -478,10 +490,13 @@ async def chat_interface(
 
             # Reset interruption flag
             agent_interrupted = False
-            
+
+            # Reset workflow state for new execution
+            workflow_agent.reset_workflow_state()
+
             # Handle workflow execution with yielded messages
             judge_output = None
-            
+
             # Show running status
             with console_printer.status("[bold blue]Agent workflow running...", spinner="dots2"):
                 try:
@@ -505,24 +520,53 @@ async def chat_interface(
                                 # Determine the type of model for better title
                                 model_type = type(item).__name__
                                 print_pydantic_model(item, f"{model_type} Output")
+                        # Check if this is a list of tasks (from PlannerOutput)
+                        elif isinstance(item, list) and len(item) > 0 and hasattr(item[0], 'goal'):
+                            # Create a table for tasks
+                            task_table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
+                            task_table.add_column("Step", style="cyan", no_wrap=True)
+                            task_table.add_column("Goal", style="white")
+                            task_table.add_column("Status", style="yellow")
+                            task_table.add_column("Output", style="green")
+                            
+                            for i, task in enumerate(item, 1):
+                                task_table.add_row(
+                                    str(i),
+                                    task.goal,
+                                    task.status,
+                                    task.output
+                                )
+                            
+                            task_panel = Panel(
+                                task_table,
+                                title="[bold green]Planned Tasks[/bold green]",
+                                border_style="green",
+                                box=box.ROUNDED
+                            )
+                            console_printer.print(task_panel)
                         else:
                             # Print regular string messages
                             console_printer.print(item)
 
                         # Check for interruption
-                        if agent_interrupted:
+                        if agent_interrupted or workflow_agent.interrupted:
                             break
 
                         # Small delay to allow for interruption
                         await asyncio.sleep(0.1)
 
+                except InterruptedError as e:
+                    console_printer.print(f"[yellow]Workflow interrupted: {e}[/yellow]")
+                    judge_output = None
                 except Exception as e:
                     console_printer.print(f"[red]Workflow error: {e}[/red]")
                     judge_output = None
 
             # Check if agent was interrupted
-            if agent_interrupted:
+            if agent_interrupted or workflow_agent.interrupted:
                 console_printer.print("[yellow]Agent execution was interrupted[/yellow]")
+                # Reset the workflow interruption flag for next execution
+                workflow_agent.interrupted = False
                 user_prompt = None
                 continue
 

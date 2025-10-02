@@ -1,3 +1,13 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""ZAP (OWASP Zed Attack Proxy) connector for web application security testing.
+
+This module provides integration with OWASP ZAP for automated security scanning,
+including spider crawling, active scanning, and vulnerability assessment.
+"""
+
 from zapv2 import ZAPv2
 from core.config.settings import Config
 import asyncio

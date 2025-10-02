@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""CLI evaluation interface for testing AI agent performance.
+
+This module provides a command-line interface for running evaluations,
+testing AI agent performance, and assessing security research capabilities
+through various evaluation scenarios and metrics.
+"""
+
 import logfire
 import socket
 import json

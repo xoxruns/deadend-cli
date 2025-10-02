@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Template rendering system for AI agent instructions and tool descriptions.
+
+This module provides template rendering functionality using Jinja2 for
+generating dynamic agent instructions, tool descriptions, and prompt
+templates based on context and configuration.
+"""
+
 from typing import Dict
 from jinja2 import Environment, FileSystemLoader
 

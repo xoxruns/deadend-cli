@@ -1,3 +1,15 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Planning agent for orchestrating security research workflows.
+
+This module implements an AI agent that analyzes targets, creates comprehensive
+security assessment plans, and coordinates the execution of various security
+testing tasks based on the target's characteristics and requirements.
+"""
+
+import uuid
 from typing import List, Any
 from pydantic import BaseModel
 from pydantic_ai import Tool
@@ -80,22 +92,22 @@ class Planner:
             usage: Usage, 
             usage_limits: UsageLimits, 
             openai: AsyncOpenAI, 
-            rag: RetrievalDatabaseConnector
+            rag: RetrievalDatabaseConnector,
+            session_id: uuid.UUID
         ):
         
         rag_deps = RagDeps(
             openai=openai,
             rag=rag,
-            target=self.target
+            target=self.target,
+            session_id=session_id
         )
 
         return await self.agent.run(
-            user_prompt=user_prompt, 
-            deps=rag_deps, 
-            message_history=message_history, 
-            usage=usage, 
+            user_prompt=user_prompt,
+            deps=rag_deps,
+            message_history=message_history,
+            usage=usage,
             usage_limits=usage_limits
         )
-
-
 

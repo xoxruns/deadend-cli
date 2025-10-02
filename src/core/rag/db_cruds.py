@@ -1,8 +1,19 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Database operations for retrieval-augmented generation (RAG) system.
+
+This module provides database connectivity and CRUD operations for storing
+and retrieving code chunks, knowledge base entries, and embeddings used
+in the security research framework's RAG system.
+"""
+
 import asyncio
 import uuid
 import numpy as np
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import text, select, func
+from sqlalchemy import text, select
 from datetime import datetime
 from typing import List, Optional, Dict, Any, AsyncGenerator
 from contextlib import asynccontextmanager
@@ -123,6 +134,7 @@ class RetrievalDatabaseConnector:
             return [(chunk, 1 - distance) for chunk, distance in rows]
 
     async def insert_code_chunk(self,
+                               session_id: uuid.UUID,
                                file_path: str,
                                code_content: str,
                                embedding: List[float],
@@ -137,6 +149,7 @@ class RetrievalDatabaseConnector:
         """
         async with self.get_session() as session:
             code_chunk = CodeChunk(
+                session_id=session_id,
                 file_path=file_path,
                 code_content=code_content,
                 embedding=embedding,
@@ -177,6 +190,7 @@ class RetrievalDatabaseConnector:
 
     async def similarity_search_code_chunk(self,
                                query_embedding: List[float],
+                               session_id: uuid.UUID,
                                limit: int = 10,
                                language: Optional[str] = None,
                                similarity_threshold: Optional[float] = None) -> List[tuple]:
@@ -189,7 +203,8 @@ class RetrievalDatabaseConnector:
             query = select(
                 CodeChunk,
                 distance_expr.label('distance')
-            )
+            ).where(CodeChunk.session_id == session_id)
+            
             # Apply language filter if specified
             if language:
                 query = query.where(CodeChunk.language == language)
@@ -342,13 +357,14 @@ class RetrievalDatabaseConnector:
     async def bulk_similarity_search(
             self,
             query_embeddings: List[List[float]], 
+            session_id: uuid.UUID,
             limit: int = 10
         ) -> List[List[tuple]]:
         """
         Perform multiple similarity searches concurrently.
         """
         tasks = [
-            self.similarity_search_code_chunk(embedding, limit=limit)
+            self.similarity_search_code_chunk(embedding, session_id, limit=limit)
             for embedding in query_embeddings
         ]
         return await asyncio.gather(*tasks)
@@ -393,15 +409,14 @@ class AsyncCodeSearchService:
         return await asyncio.gather(*tasks)
 
     async def hybrid_search(self,
-                           query: str,
                            query_embedding: List[float],
+                           session_id: uuid.UUID,
                            limit: int = 10) -> List[tuple]:
         """
         Combine text search and semantic search for better results.
         """
         # Run both searches concurrently
-        semantic_task = self.repo.similarity_search(query_embedding, limit=limit)
-        # text_task = self.repo.search_by_function_name(query, query_embedding, limit=limit)
+        semantic_task = self.repo.similarity_search_code_chunk(query_embedding, session_id, limit=limit)
 
         semantic_results = await asyncio.gather(semantic_task)
 
@@ -448,6 +463,7 @@ async def async_example_usage():
 
     # Insert code chunk
     chunk = await repo.insert_code_chunk(
+        session_id=uuid.uuid4(),
         file_path="utils/similarity.py",
         code_content=sample_code,
         embedding=dummy_embedding,
@@ -463,17 +479,20 @@ async def async_example_usage():
     query_embedding = np.random.rand(1536).tolist()
     results = await repo.similarity_search_code_chunk(
         query_embedding=query_embedding,
+        session_id=chunk.session_id,
         limit=5,
         language="python"
     )
 
     print(f"Found {len(results)} similar chunks:")
     for chunk, similarity in results:
-        print(f"  - {chunk.function_name} (similarity: {similarity:.3f})")
+        print(f"  - {chunk.file_path} (similarity: {similarity:.3f})")
 
     # Batch processing example
+    example_session_id = uuid.uuid4()
     code_files = [
         {
+            "session_id": example_session_id,
             "file_path": f"example_{i}.py",
             "code_content": f"def function_{i}(): pass",
             "embedding": np.random.rand(1536).tolist(),
@@ -498,8 +517,8 @@ async def async_example_usage():
 
     # Hybrid search
     hybrid_results = await service.hybrid_search(
-        query="calculate",
         query_embedding=query_embedding,
+        session_id=example_session_id,
         limit=10
     )
 

@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Evaluation framework for AI agent performance and security research.
+
+This module provides evaluation functionality for testing AI agent performance,
+security research capabilities, and workflow effectiveness using various
+evaluation metrics and testing scenarios.
+"""
+
 import docker
 from typing import Literal
 from pydantic import BaseModel, Field

@@ -1,3 +1,14 @@
+# Copyright (C) 2025 Yassine Bargach
+# Licensed under the GNU Affero General Public License v3
+# See LICENSE file for full license information.
+
+"""Knowledge base indexing and embedding system for security research.
+
+This module provides functionality to index, chunk, and embed knowledge base
+documents, enabling semantic search over security research information,
+documentation, and best practices for AI agent assistance.
+"""
+
 import os
 from typing import List 
 from openai import AsyncOpenAI, BadRequestError
