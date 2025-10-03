@@ -9,7 +9,19 @@
 
 - [What in the world is this ?](#what-in-the-world-is-this-)
 - [A quick demo](#a-quick-demo)
-- [Is this another workflow that runs tools and calls it a day?](#is-this-another-workflow-that-runs-tools-and-calls-it-a-day)
+- [🎯 Project Vision & Approach](#-project-vision--approach)
+  - [Current State & Development Philosophy](#current-state--development-philosophy)
+  - [Core Analysis Capabilities](#core-analysis-capabilities)
+  - [Target Scope & Limitations](#target-scope--limitations)
+- [🚀 Future Features & Roadmap](#-future-features--roadmap)
+  - [Planned Enhancements](#planned-enhancements)
+  - [Known Issues & Limitations](#known-issues--limitations)
+- [✨ Available Features](#-available-features)
+  - [🤖 Multi-Model AI Support](#-multi-model-ai-support)
+  - [🌐 Web Application Analysis](#-web-application-analysis)
+  - [📚 Knowledge Management](#-knowledge-management)
+  - [🔧 Advanced Testing Capabilities](#-advanced-testing-capabilities)
+  - [🐳 Secure Execution Environment](#-secure-execution-environment)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
   - [Install with pipx (Recommended)](#install-with-pipx-recommended)
@@ -21,33 +33,125 @@
   - [Running the Chat Agent](#running-the-chat-agent)
   - [Example: OWASP Juice Shop](#example-owasp-juice-shop)
 - [Enjoy](#enjoy)
-- [Disclaimer](#️-disclaimer)
+- [⚠️ Disclaimer](#️-disclaimer)
 
 ## What in the world is this ? 
 Deadend CLI is a prototype AI Agent for security researchers, pentesters and developers. 
 
 Inspired by Google Zero's project Naptime, this project aims to build a prototype of an agentic AI tool that helps gain time and give a better understanding on analysis.
+![cli.png](./assets/cli.png)
 
-## A quick demo 
-Follow the link --> [https://youtu.be/rDFj5kDgqKM](https://youtu.be/rDFj5kDgqKM)
+## 🎯 Project Vision & Approach
 
+> [!WARNING]
+> **Evaluation in Progress**: This project is currently undergoing active evaluation and testing across multiple vulnerability types (OWASP Top 10, business logic flaws, authentication bypasses, etc.). Results, performance metrics, and capabilities may vary significantly during this development phase. Do not use in Production environments.
 
-## Is this another workflow that runs tools and calls it a day? 
-In current state of the project, honestly, it is. Even though, it is built using a codebase indexer system, there is still work to do to make more efficient and useful on a daily basis for well-seasoned professionals. 
+Deadend CLI represents a new paradigm in automated security testing, designed to bridge the gap between traditional static/dynamic analysis tools and the nuanced, context-aware analysis that experienced security professionals perform.
 
-The project aims to build an AI-assisted vulnerability analysis system by combining code indexing and retrieval for effective security analysis. 
+### Current State & Development Philosophy
 
-In other words, the goal is to simplify security analysis :
-- by applying taint analysis. 
-- by finding sinks and sources. 
-- by connecting to specific tools to test a predicate or a complex logic that is not automatable.
+While the current implementation leverages workflow automation and tool orchestration, the project's core innovation lies in its **AI-assisted vulnerability analysis system**. By combining intelligent code indexing with contextual retrieval mechanisms, Deadend CLI aims to provide deeper insights than traditional automated scanners.
 
-This first prototype targets web application and APIs. The goal is not to replace static and dynamic analysis tools such as SASTs or DASTs, but to add a different method of analysis to find non-automatable vulnerabilities such as : 
-- [ ] broken access controls 
-- [ ] IDORs 
-- [ ] Business logic vulnerabilities 
-- [ ] and so on..
+### Core Analysis Capabilities
 
+The framework focuses on **intelligent security analysis** through:
+
+- **🔍 Taint Analysis**: Automated tracking of data flow from sources to sinks
+- **🎯 Source/Sink Detection**: Intelligent identification of entry points and vulnerable functions
+- **🔗 Contextual Tool Integration**: Smart connection to specialized tools for testing complex logic patterns
+- **🧠 AI-Driven Reasoning**: Context-aware analysis that mimics expert security thinking
+
+### Target Scope & Limitations
+
+**Primary Focus**: Web applications and APIs
+
+**Complementary Approach**: Deadend CLI is designed to **enhance**, not replace, existing SAST/DAST tools. It specifically targets vulnerabilities that require human-like reasoning and context understanding:
+
+- **🔐 Broken Access Controls**: Complex authorization bypass scenarios
+- **🆔 IDOR Vulnerabilities**: Indirect object reference exploitation patterns  
+- **⚙️ Business Logic Flaws**: Application-specific logic vulnerabilities
+- **🔄 State Management Issues**: Session and authentication state manipulation
+- **📊 Data Validation Bypasses**: Complex input validation circumvention
+
+This approach enables discovery of vulnerabilities that traditional scanners often miss due to their inability to understand application context and business logic.
+
+## 🚀 Future Features & Roadmap
+
+### Planned Enhancements
+
+**🔐 Advanced Authentication Handling**
+- Comprehensive authentication flow testing including OAuth, JWT, session management
+- Multi-factor authentication bypass techniques
+- Credential stuffing and brute force attack automation
+
+**📊 Attack Evaluation Framework**
+- Automated testing against OWASP Top 10 vulnerabilities
+- Custom attack pattern recognition and validation
+- Performance benchmarking against known vulnerability databases
+
+**⚡ Smart Terminal Integration**
+- Intelligent command output parsing and summarization
+- Context-aware command suggestions based on target analysis
+- Automated tool chaining for faster reconnaissance workflows
+- Real-time vulnerability correlation from multiple tool outputs
+
+**🔧 MCP (Model Context Protocol) Integration**
+- Enhanced AI model communication protocols
+- Improved context sharing between different analysis modules
+- Better integration with external security tools and APIs
+
+**🐍 Python Exploitation Sandbox**
+- Secure code generation and execution environment
+- Custom exploit development and testing capabilities
+- Integration with popular exploitation frameworks
+- Automated payload generation and testing
+
+**📁 Advanced Code Analysis**
+- Comprehensive source code indexing and navigation
+- Interactive code browser with vulnerability highlighting
+- Taint analysis visualization and flow tracking
+- Integration with static analysis tools
+
+### Known Issues & Limitations
+
+**⚠️ Current Limitations**
+
+- **Interrupt Handling**: The agent doesn't gracefully handle user interruptions during long-running operations
+- **Performance Optimization**: Multiple API calls and inefficient context management impact response times
+- **Context Management**: Large request payloads and context window limitations affect analysis depth
+- **Tool Integration**: Limited integration with specialized security tools and frameworks
+
+## ✨ Available Features
+
+### 🤖 Multi-Model AI Support
+- **OpenAI Models**: GPT-4, GPT-4o-mini with latest capabilities
+- **Google Gemini**: Gemini 2.5 Pro for advanced reasoning
+- **Anthropic Claude**: Claude models for detailed analysis
+- *More providers coming soon*
+
+### 🌐 Web Application Analysis
+- **Resource Indexing**: Complete web application structure mapping
+- **Local Storage**: Secure local indexing without external dependencies
+- **Dynamic Analysis**: Real-time interaction with target applications
+- **API Discovery**: Automated endpoint detection and analysis
+
+### 📚 Knowledge Management
+- **Personal Notes Indexing**: Index and search your security research notes
+- **Local Knowledge Base**: Private, offline knowledge management
+- **Context-Aware Search**: Intelligent retrieval based on current analysis context
+- **Research Documentation**: Automated documentation of findings
+
+### 🔧 Advanced Testing Capabilities
+- **Raw HTTP Requests**: Direct HTTP request manipulation and testing
+- **Proxy Integration**: Seamless integration with Burp Suite, OWASP ZAP, and other proxies
+- **Request/Response Analysis**: Deep inspection of web traffic
+- **Custom Payload Testing**: Flexible payload injection and testing
+
+### 🐳 Secure Execution Environment
+- **Docker Sandbox**: Isolated shell environment for safe command execution
+- **Containerized Tools**: Pre-configured security tools in secure containers
+- **Resource Isolation**: Complete isolation from host system
+- **Tool Chain Integration**: Seamless integration with popular pentesting tools
 
 ## Installation 
 

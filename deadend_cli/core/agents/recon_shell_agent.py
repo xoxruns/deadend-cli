@@ -2,35 +2,33 @@
 # Licensed under the GNU Affero General Public License v3
 # See LICENSE file for full license information.
 
-"""Web application reconnaissance agent for information gathering and analysis.
+"""Reconnaissance shell agent for command-line reconnaissance and analysis.
 
-This module implements an AI agent that performs comprehensive reconnaissance
-on web applications, including directory enumeration, technology detection,
-vulnerability scanning, and information gathering for security assessments.
+This module implements an AI agent that performs reconnaissance tasks using
+shell commands within a sandboxed environment, including system enumeration,
+network scanning, file system analysis, and other command-line security tools
+for comprehensive security assessments.
 """
 from typing import Any
 from pydantic import BaseModel
 from pydantic_ai import Tool, DeferredToolRequests, DeferredToolResults
 from pydantic_ai.usage import RunUsage, UsageLimits
 from deadend_cli.core.models import AIModel
-from deadend_cli.core.tools import (
-    sandboxed_shell_tool, 
-    is_valid_request, 
-    send_payload, 
-    webapp_code_rag
-)
+from deadend_cli.core.tools import sandboxed_shell_tool
 from deadend_cli.core.agents.factory import AgentRunner
 from deadend_cli.prompts import render_agent_instructions, render_tool_description
 
-class RequesterOutput(BaseModel):
+class ShellReconOutput(BaseModel):
     reasoning: str
     state: str
     raw_response: str
 
-class WebappReconAgent(AgentRunner):
+class ReconShellAgent(AgentRunner):
     """
-    The webapp recon agent is the agent in charge of doing the recon on the target. 
-    The goal is to retrieve all the important information that we can 
+    The recon shell agent is responsible for performing reconnaissance tasks
+    using shell commands within a sandboxed environment. The goal is to gather
+    system information, enumerate services, analyze file systems, and perform
+    various command-line security assessments.
     """
 
     def __init__(
@@ -41,28 +39,22 @@ class WebappReconAgent(AgentRunner):
         requires_approval: bool,
     ):
         tools_metadata = {
-            "is_valid_request": render_tool_description("is_valid_request"),
-            "send_payload": render_tool_description("send_payload"),
-            # "sandboxed_shell_tool": render_tool_description("sandboxed_shell_tool"),
-            # "webapp_code_rag": render_tool_description("webapp_code_rag")
+            "sandboxed_shell_tool": render_tool_description("sandboxed_shell_tool"),
         } 
 
         self.instructions = render_agent_instructions(
-            agent_name="webapp_recon",
+            agent_name="recon_shell",
             tools=tools_metadata,
             target=target_information
         )
         super().__init__(
-            name="webapp_recon",
+            name="recon_shell",
             model=model, 
             instructions=self.instructions,
             deps_type=deps_type,
-            output_type=[RequesterOutput, DeferredToolRequests],
+            output_type=[ShellReconOutput, DeferredToolRequests],
             tools=[
-                Tool(is_valid_request),
-                Tool(send_payload, requires_approval=requires_approval),
-                # Tool(sandboxed_shell_tool),
-                Tool(webapp_code_rag)
+                Tool(sandboxed_shell_tool, requires_approval=requires_approval),
             ]
         )
 
@@ -71,9 +63,9 @@ class WebappReconAgent(AgentRunner):
         user_prompt,
         deps,
         message_history,
-        usage: RunUsage,
-        usage_limits:UsageLimits,
-        deferred_tool_results: DeferredToolResults | None,
+        usage: RunUsage | None,
+        usage_limits: UsageLimits | None,
+        deferred_tool_results: DeferredToolResults | None = None,
     ):
         return await super().run(
             user_prompt=user_prompt,

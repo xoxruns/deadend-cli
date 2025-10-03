@@ -32,7 +32,8 @@ from deadend_cli.core.agents import (
     Planner, RagDeps, PlannerOutput,
     RouterAgent, RouterOutput,
     JudgeAgent,
-    WebappReconAgent
+    WebappReconAgent,
+    ReconShellAgent
 )
 from deadend_cli.core.agents.reporter import ReporterAgent
 
@@ -156,7 +157,7 @@ class WorkflowRunner:
             )
 
             # Summarize the context
-            await reporter_agent.summarize_context(self.context.get_all_context())
+            await reporter_agent.summarize_context(self.context)
             console_printer.print("[green]Workflow context summarized successfully[/green]")
         except Exception as e:
             console_printer.print(f"[red]Error summarizing workflow context: {e}[/red]")
@@ -406,6 +407,13 @@ class WorkflowRunner:
                     target_information=self.context.target,
                     requires_approval=requires_approval
                 )
+            case "recon_shell":
+                return ReconShellAgent(
+                    model=self.model,
+                    deps_type=WebappreconDeps,
+                    target_information=self.context.target,
+                    requires_approval=requires_approval
+                )
             case _:
                 self.context.add_not_found_agent(agent_name=agent_name)
                 return RouterAgent(
@@ -471,6 +479,29 @@ class WorkflowRunner:
                 # Check for interruption before webapp recon execution
                 if self.interrupted:
                     raise InterruptedError("Workflow interrupted before webapp recon execution")
+
+                openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
+                shell_runner = ShellRunner("session_agent", self.sandbox)
+
+                webapprecon_deps = WebappreconDeps(
+                    openai=openai_embedder,
+                    rag=self.code_indexer_db,
+                    target=self.target,
+                    shell_runner=shell_runner,
+                    session_id=self.session_id
+                )
+                resp = await agent.run(
+                    user_prompt=user_prompt,
+                    message_history=message_history,
+                    usage=usage_agent,
+                    deps=webapprecon_deps,
+                    usage_limits=usage_limits_agent,
+                    deferred_tool_results=deferred_tool_results
+                )
+            elif agent_name == "recon_shell":
+                # Check for interruption before recon shell execution
+                if self.interrupted:
+                    raise InterruptedError("Workflow interrupted before recon shell execution")
 
                 openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
                 shell_runner = ShellRunner("session_agent", self.sandbox)
@@ -624,6 +655,12 @@ class WorkflowRunner:
             if self.interrupted:
                 console_printer.print("[yellow]Workflow interrupted by user[/yellow]")
                 break
+                   # Summarize workflow context after completion to manage token limits
+            try:
+                console_printer.print("\n[bold blue]Summarizing workflow context...[/bold blue]")
+                await self.summarize_workflow_context()
+            except Exception as e:
+                console_printer.print(f"[yellow]Warning: Could not summarize context: {e}[/yellow]")
 
             iteration += 1
 
@@ -651,7 +688,12 @@ class WorkflowRunner:
 
             if judge_output.output.goal_achieved:
                 self.goal_achieved = True
-
+        # Summarize workflow context after completion to manage token limits
+        try:
+            console_printer.print("\n[bold blue]Summarizing workflow context...[/bold blue]")
+            await self.summarize_workflow_context()
+        except Exception as e:
+            console_printer.print(f"[yellow]Warning: Could not summarize context: {e}[/yellow]")
         yield judge_output.output
 
     async def _get_user_approval_for_tool_requests(

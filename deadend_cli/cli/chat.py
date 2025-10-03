@@ -402,6 +402,7 @@ async def chat_interface(
     # Setup available agents
     available_agents = {
         'webapp_recon': "Expert cybersecurity agent that enumerates a web target to understand the architecture and understand the endpoints and where an attack vector could be tested.",
+        'recon_shell': "Expert system reconnaissance agent that performs infrastructure-level security assessment using specialized command-line tools. Focuses on network scanning, system enumeration, and infrastructure analysis. Should NOT be used for simple request injections or basic web testing - use specialized web tools instead.",
         # 'planner_agent': 'Expert cybersecurity agent that plans what is the next step to do',
         'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
     }
@@ -653,13 +654,6 @@ does not exist or is not a directory. Skipping knowledge base initialization.[/y
             if hasattr(judge_output, 'output') and hasattr(judge_output.output, 'solution'):
                 console_printer.print("\n[bold cyan]Solution:[/bold cyan]")
                 console_printer.print(f"{judge_output.output.solution}")
-
-            # Summarize workflow context after completion to manage token limits
-            try:
-                console_printer.print("\n[bold blue]Summarizing workflow context...[/bold blue]")
-                await workflow_agent.summarize_workflow_context()
-            except Exception as e:
-                console_printer.print(f"[yellow]Warning: Could not summarize context: {e}[/yellow]")
 
             user_prompt = None
             
