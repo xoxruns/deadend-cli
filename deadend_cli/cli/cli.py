@@ -35,7 +35,7 @@ def version():
 def chat(
     prompt: str = typer.Option(None, help="Send a prompt directly to chat mode."),
     target: str = typer.Option(None, help="Target URL or identifier for chat."),
-    mode: str = typer.Option(Modes.yolo, help="Two modes available, yolo and hacker."),
+    mode: str = typer.Option(Modes.hacker, help="Two modes available, yolo and hacker."),
     openapi_spec: str = typer.Option(None, help="Path to the OpenAPI specification file."),
     knowledge_base: str = typer.Option(None, help="Folder path to the knowledge base.")
     ):

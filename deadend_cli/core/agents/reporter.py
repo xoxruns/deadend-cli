@@ -78,7 +78,6 @@ Current workflow context:
             usage=None,
             usage_limits=None
         )
-        print(f"results :reporter ok")
         # Extract the summarized context from the result
         if hasattr(result, 'output') and hasattr(result.output, 'summarized_context'):
             summarized_context = result.output.summarized_context

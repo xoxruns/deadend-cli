@@ -86,6 +86,7 @@ class WorkflowRunner:
             config: Config,
             code_indexer_db: RetrievalDatabaseConnector,
             sandbox: Sandbox | None,
+            mode: str = "hacker",
         ):
         """Initialize the WorkflowRunner.
         
@@ -94,11 +95,13 @@ class WorkflowRunner:
             config: Configuration object with API keys and settings
             code_indexer_db: Database connector for code indexing
             sandbox: Optional sandbox environment for secure execution
+            mode: Mode for approval requirements ("hacker" requires approval, "yolo" doesn't)
         """
         self.config = config
         self.model = model
         self.code_indexer_db = code_indexer_db
         self.sandbox = sandbox
+        self.mode = mode
         self.session_id = uuid.uuid4()
         self.interrupted = False
         self.approval_callback = None  # Callback function for user approval
@@ -392,13 +395,16 @@ class WorkflowRunner:
         Returns:
             AgentRunner instance for the specified agent
         """
+        # Determine if approval is required based on mode
+        requires_approval = self.mode == "hacker"
+        
         match agent_name:
             case "webapp_recon":
                 return WebappReconAgent(
                     model=self.model,
                     deps_type=WebappreconDeps,
                     target_information=self.context.target,
-                    requires_approval=True
+                    requires_approval=requires_approval
                 )
             case _:
                 self.context.add_not_found_agent(agent_name=agent_name)

@@ -179,8 +179,7 @@ class ChatInterface:
 
     def startup(self):
         """Print startup banner and basic usage help."""
-        self.console.print("[bold green] Starting Agent Mode: Chat interface.[/bold green]")
-        self.console.print("Type '/help' for commands, '/quit' to exit.")
+        self.console.print("[bold green] Starting Agent: Chat interface.[/bold green]")
 
     async def ask_for_approval_panel(self, title: str = "Tool Approval Required") -> Optional[str]:
         """Prompt for tool execution approval using Prompt Toolkit with choices.
@@ -391,7 +390,8 @@ async def chat_interface(
         model=model,
         config=config,
         code_indexer_db=rag_db,
-        sandbox=sandbox
+        sandbox=sandbox,
+        mode=mode
     )
 
     # Set up approval callback to use Prompt Toolkit
