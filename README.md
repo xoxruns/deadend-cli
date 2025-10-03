@@ -22,6 +22,14 @@
   - [📚 Knowledge Management](#-knowledge-management)
   - [🔧 Advanced Testing Capabilities](#-advanced-testing-capabilities)
   - [🐳 Secure Execution Environment](#-secure-execution-environment)
+- [🚀 What the CLI Can Do](#-what-the-cli-can-do)
+  - [📋 Core Commands](#-core-commands)
+  - [🤖 AI Agents & Their Capabilities](#-ai-agents--their-capabilities)
+  - [🛠️ Available Tools & Capabilities](#️-available-tools--capabilities)
+  - [🎯 Operating Modes](#-operating-modes)
+  - [🔍 Security Testing Capabilities](#-security-testing-capabilities)
+  - [💬 Interactive Chat Features](#-interactive-chat-features)
+  - [🔧 Advanced Features](#-advanced-features)
 - [Installation](#installation)
   - [Prerequisites](#prerequisites)
   - [Install with pipx (Recommended)](#install-with-pipx-recommended)
@@ -152,6 +160,178 @@ This approach enables discovery of vulnerabilities that traditional scanners oft
 - **Containerized Tools**: Pre-configured security tools in secure containers
 - **Resource Isolation**: Complete isolation from host system
 - **Tool Chain Integration**: Seamless integration with popular pentesting tools
+
+## 🚀 What the CLI Can Do
+
+The Deadend CLI provides a comprehensive suite of security testing capabilities through its interactive chat interface and specialized agents. Here's what you can accomplish:
+
+### 📋 Core Commands
+
+#### `deadend-cli init`
+- **Purpose**: Initialize the CLI configuration and set up required services
+- **What it does**:
+  - Checks Docker installation and availability
+  - Sets up pgvector database container for vector storage
+  - Prompts for environment variable configuration
+  - Saves configuration to `~/.cache/deadend/config.toml`
+  - Validates API keys for AI model providers
+
+#### `deadend-cli chat`
+- **Purpose**: Start the interactive AI-powered security testing chat interface
+- **Key Parameters**:
+  - `--target`: Target URL or identifier for analysis
+  - `--prompt`: Initial prompt to pre-fill the chat
+  - `--mode`: Choose between `hacker` (requires approval) or `yolo` (autonomous)
+  - `--openapi-spec`: Path to OpenAPI specification file for API context
+  - `--knowledge-base`: Folder path to personal knowledge base
+
+#### `deadend-cli eval-agent`
+- **Purpose**: Run evaluation agent on datasets of security challenges
+- **Key Parameters**:
+  - `--eval-metadata-file`: Dataset file containing challenge information
+  - `--llm-providers`: List of AI model providers to use
+  - `--guided`: Run subtasks instead of single general task
+
+#### `deadend-cli version`
+- **Purpose**: Display the current version of the Deadend framework
+
+### 🤖 AI Agents & Their Capabilities
+
+#### **Webapp Recon Agent**
+- **Specialization**: Web application reconnaissance and vulnerability testing
+- **Capabilities**:
+  - HTTP request validation and execution
+  - Payload injection and testing
+  - Web application code analysis through RAG
+  - Endpoint discovery and enumeration
+  - Authentication bypass testing
+  - Input validation testing
+
+#### **Recon Shell Agent**
+- **Specialization**: Infrastructure-level security assessment
+- **Capabilities**:
+  - Network scanning and enumeration
+  - System reconnaissance using command-line tools
+  - File system analysis
+  - Service enumeration
+  - Network topology mapping
+  - Infrastructure vulnerability assessment
+
+#### **Router Agent**
+- **Specialization**: Intelligent task routing and agent selection
+- **Capabilities**:
+  - Analyzes user requests to determine appropriate agent
+  - Routes tasks to specialized agents based on context
+  - Manages workflow orchestration
+  - Optimizes agent selection for specific security tasks
+
+#### **Judge Agent**
+- **Specialization**: Goal achievement assessment and validation
+- **Capabilities**:
+  - Evaluates whether security objectives have been met
+  - Validates vulnerability findings
+  - Assesses attack success
+  - Provides final assessment and recommendations
+
+### 🛠️ Available Tools & Capabilities
+
+#### **HTTP Request Tools**
+- **`send_payload`**: Execute raw HTTP requests with custom payloads
+- **`is_valid_request`**: Validate HTTP request format and safety
+- **Proxy Integration**: Seamless integration with Burp Suite, OWASP ZAP
+- **Request/Response Analysis**: Deep inspection of web traffic
+
+#### **Shell Execution Tools**
+- **`sandboxed_shell_tool`**: Execute commands in isolated Docker containers
+- **Security Tool Integration**: Access to nmap, nikto, sqlmap, and other tools
+- **Command Output Parsing**: Intelligent analysis of tool outputs
+- **Safe Execution**: All commands run in sandboxed environments
+
+#### **Code Analysis Tools**
+- **`webapp_code_rag`**: Search and analyze source code using RAG
+- **Source Code Indexing**: Comprehensive code structure mapping
+- **Vulnerability Pattern Detection**: AI-powered code analysis
+- **Taint Analysis**: Track data flow from sources to sinks
+
+#### **Web Resource Extraction**
+- **Complete Resource Mapping**: Extract all web resources (HTML, JS, CSS, etc.)
+- **Dynamic Content Analysis**: Capture dynamically loaded content
+- **Performance Metrics**: Analyze loading times and resource efficiency
+- **Screenshot Capture**: Visual analysis of web pages
+
+### 🎯 Operating Modes
+
+#### **Hacker Mode** (Default)
+- **Approval Required**: All potentially dangerous operations require user approval
+- **Interactive Control**: User can review and approve each action
+- **Safe Testing**: Ideal for production environments or sensitive targets
+- **Manual Oversight**: Full control over the testing process
+
+#### **Yolo Mode**
+- **Autonomous Operation**: AI agents execute actions without approval
+- **Rapid Testing**: Faster execution for development and testing environments
+- **Full Automation**: Complete hands-off security testing
+- **Use Case**: Ideal for CTF challenges, lab environments, or rapid prototyping
+
+### 🔍 Security Testing Capabilities
+
+#### **Web Application Security**
+- **OWASP Top 10 Testing**: Comprehensive coverage of common vulnerabilities
+- **Authentication Bypass**: Test login mechanisms and session management
+- **Authorization Testing**: Check access controls and privilege escalation
+- **Input Validation**: Test for injection vulnerabilities (SQL, XSS, etc.)
+- **Business Logic Flaws**: Identify application-specific vulnerabilities
+
+#### **API Security Testing**
+- **OpenAPI Integration**: Load API specifications for targeted testing
+- **Endpoint Discovery**: Automated API endpoint enumeration
+- **Parameter Testing**: Comprehensive parameter fuzzing and validation
+- **Authentication Testing**: API key, JWT, and OAuth testing
+
+#### **Infrastructure Security**
+- **Network Scanning**: Port scanning and service enumeration
+- **System Reconnaissance**: OS fingerprinting and service analysis
+- **Vulnerability Assessment**: Automated vulnerability detection
+- **Configuration Analysis**: Security misconfiguration identification
+
+### 💬 Interactive Chat Features
+
+#### **Rich Terminal Interface**
+- **Real-time Output**: Live display of agent actions and results
+- **Formatted Results**: Beautiful tables and panels for data presentation
+- **Progress Tracking**: Visual indicators for long-running operations
+- **Error Handling**: Clear error messages and recovery suggestions
+
+#### **Chat Commands**
+- **`/help`**: Show available commands and keyboard shortcuts
+- **`/clear`**: Clear conversation context and start fresh
+- **`/new-target`**: Change the target URL during the session
+- **`/quit`**: Exit the application safely
+
+#### **Keyboard Shortcuts**
+- **`Ctrl+C`**: Exit the application
+- **`Ctrl+I`**: Interrupt running agent operations
+- **`Enter`**: Submit input and continue conversation
+
+### 🔧 Advanced Features
+
+#### **Knowledge Base Integration**
+- **Personal Notes**: Index and search your security research notes
+- **Context-Aware Search**: Intelligent retrieval based on current analysis
+- **Research Documentation**: Automated documentation of findings
+- **Local Storage**: Private, offline knowledge management
+
+#### **Multi-Model Support**
+- **Provider Flexibility**: Switch between OpenAI, Google, and Anthropic models
+- **Model Comparison**: Use multiple providers for evaluation
+- **Fallback Mechanisms**: Automatic failover between providers
+- **Custom Configuration**: Fine-tune model parameters
+
+#### **Docker Integration**
+- **Automatic Setup**: Self-configuring pgvector database
+- **Container Management**: Automatic start/stop of required services
+- **Resource Isolation**: Complete isolation from host system
+- **Tool Containers**: Pre-configured security tools in containers
 
 ## Installation 
 
