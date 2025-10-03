@@ -22,7 +22,7 @@
   - [📚 Knowledge Management](#-knowledge-management)
   - [🔧 Advanced Testing Capabilities](#-advanced-testing-capabilities)
   - [🐳 Secure Execution Environment](#-secure-execution-environment)
-- [🚀 What the CLI Can Do](#-what-the-cli-can-do)
+- [How to use the CLI](#-how-to-use)
   - [📋 Core Commands](#-core-commands)
   - [🤖 AI Agents & Their Capabilities](#-ai-agents--their-capabilities)
   - [🛠️ Available Tools & Capabilities](#️-available-tools--capabilities)
@@ -161,9 +161,11 @@ This approach enables discovery of vulnerabilities that traditional scanners oft
 - **Resource Isolation**: Complete isolation from host system
 - **Tool Chain Integration**: Seamless integration with popular pentesting tools
 
-## 🚀 What the CLI Can Do
+## How to use
 
-The Deadend CLI provides a comprehensive suite of security testing capabilities through its interactive chat interface and specialized agents. Here's what you can accomplish:
+The Deadend CLI provides an interactive chat interface and specialized agents. 
+
+You need to run `deadend-cli init` to initialize all the variables and configurations (cached).
 
 ### 📋 Core Commands
 
