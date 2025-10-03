@@ -163,9 +163,17 @@ This approach enables discovery of vulnerabilities that traditional scanners oft
 
 ## How to use
 
-The Deadend CLI provides an interactive chat interface and specialized agents. 
+The Deadend CLI provides an interactive chat interface and specialized agents for security testing.
 
-You need to run `deadend-cli init` to initialize all the variables and configurations (cached).
+**Prerequisites**: Docker must be installed and running on your system before using the CLI.
+
+**First-time Setup**: You need to run `deadend-cli init` to initialize all the environment variables and configurations (saved to cache). This command will:
+- Check Docker installation and availability
+- Set up the required pgvector database container
+- Prompt you to configure API keys and environment variables
+- Save the configuration to `~/.cache/deadend/config.toml`
+
+After initialization, you can use the other CLI commands for security testing.
 
 ### 📋 Core Commands
 
