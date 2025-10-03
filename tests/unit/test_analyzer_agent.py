@@ -1,12 +1,12 @@
 import pytest
-from src.agents.analyzer_agent import AnalyzerAgent
+from core.agents.analyzer_agent import AnalyzerAgent
 from pydantic_ai.usage import Usage, UsageLimits
 from pydantic_ai.agent import Agent
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 import requests
-from config import Config
-from src.utils.structures import TargetDeps
+from core.config.settings import Config
+from core.utils.structures import TargetDeps
 
 config_test = Config()
 config_test.configure()

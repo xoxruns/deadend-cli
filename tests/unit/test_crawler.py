@@ -1,6 +1,6 @@
 import pytest
-from src.tools.crawler import WebpageCrawler
-from config import Config
+from core.tools.crawler import WebpageCrawler
+from core.config.settings import Config
 
 config_test = Config()
 config_test.configure()

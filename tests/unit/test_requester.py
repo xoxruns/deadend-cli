@@ -1,8 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, patch
-from src.tools.requester import Requester
-from config import Config
-import httpx
+from core.tools.requester import Requester
+from core.config.settings import Config
 import ssl
 
 ssl_context = ssl.create_default_context()

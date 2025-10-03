@@ -1,0 +1,34 @@
+{
+  "sandbox_test_data": {
+    "docker_images": [
+      "ubuntu:latest",
+      "python:3.9",
+      "alpine:latest",
+      "node:16"
+    ],
+    "test_commands": [
+      "echo hello",
+      "ls -la",
+      "python --version",
+      "whoami",
+      "pwd"
+    ],
+    "expected_outputs": {
+      "echo hello": "hello",
+      "whoami": "root",
+      "pwd": "/"
+    }
+  },
+  "challenge_data": {
+    "crypto_challenges": [
+      "Dynastic",
+      "Primary Knowledge",
+      "Makeshift"
+    ],
+    "web_challenges": [
+      "Flag Command",
+      "KORP Terminal",
+      "TimeKORP"
+    ]
+  }
+}
