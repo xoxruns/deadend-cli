@@ -688,13 +688,7 @@ class WorkflowRunner:
 
             if judge_output.output.goal_achieved:
                 self.goal_achieved = True
-        # Summarize workflow context after completion to manage token limits
-        try:
-            console_printer.print("\n[bold blue]Summarizing workflow context...[/bold blue]")
-            await self.summarize_workflow_context()
-        except Exception as e:
-            console_printer.print(f"[yellow]Warning: Could not summarize context: {e}[/yellow]")
-        yield judge_output.output
+
 
     async def _get_user_approval_for_tool_requests(
         self,
