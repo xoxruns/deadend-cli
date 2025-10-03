@@ -34,6 +34,7 @@ from deadend_cli.core.agents import (
     JudgeAgent,
     WebappReconAgent
 )
+from deadend_cli.core.agents.reporter import ReporterAgent
 
 # TODO: Handling message history to be able to use it in a better way
 MAX_ITERATION = 3
@@ -101,7 +102,7 @@ class WorkflowRunner:
         self.session_id = uuid.uuid4()
         self.interrupted = False
         self.approval_callback = None  # Callback function for user approval
-        
+
         # Initialize context engine with session ID
         self.context = ContextEngine(session_id=self.session_id)
 
@@ -123,7 +124,7 @@ class WorkflowRunner:
         """
         self.goal_achieved = False
         self.interrupted = False
-        
+
         console_printer.print("[green]Workflow state reset for new execution[/green]")
 
     def set_approval_callback(self, callback):
@@ -133,6 +134,29 @@ class WorkflowRunner:
             callback: Async function that returns user input for approval
         """
         self.approval_callback = callback
+
+    async def summarize_workflow_context(self) -> None:
+        """Summarize the workflow context using the reporter agent to stay under token limits.
+        
+        This method creates a reporter agent and uses it to summarize the current
+        workflow context, ensuring it remains under 150,000 tokens while preserving
+        all critical security information and findings.
+        """
+        try:
+            # Create reporter agent
+            reporter_agent = ReporterAgent(
+                model=self.model,
+                deps_type=None,
+                tools=[],
+                validation_type=None,
+                validation_format=None
+            )
+
+            # Summarize the context
+            await reporter_agent.summarize_context(self.context.get_all_context())
+            console_printer.print("[green]Workflow context summarized successfully[/green]")
+        except Exception as e:
+            console_printer.print(f"[red]Error summarizing workflow context: {e}[/red]")
 
     def _set_assets(self, assets_folder: str) -> None:
         """Set the assets folder path.

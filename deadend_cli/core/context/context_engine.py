@@ -281,6 +281,16 @@ class ContextEngine:
         self.workflow_context += f"""\\n\n[Tool response{tool_name}]\\n\n{response}\n"""
         self._append_to_context_file(f"[Tool use: {tool_name}]", response)
 
+    def set_new_workflow(self, new_context: str) -> None:
+        """Set a new workflow with the provided context string.
+        
+        Args:
+            new_context (str): The new context string for the workflow.
+        
+        Replaces the current workflow context with the new context string.
+        """
+        self.workflow_context = new_context
+
     def get_context_file_path(self) -> Path:
         """Get the path to the context file.
         

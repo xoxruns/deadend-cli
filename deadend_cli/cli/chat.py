@@ -367,7 +367,7 @@ async def chat_interface(
             initialize the required Model configuration for {llm_provider}")
 
     model = model_registry.get_model(provider=llm_provider)
-    
+
     # Try to initialize optional dependencies without exiting the app
     rag_db = None
     try:
@@ -393,7 +393,7 @@ async def chat_interface(
         code_indexer_db=rag_db,
         sandbox=sandbox
     )
-    
+
     # Set up approval callback to use Prompt Toolkit
     async def approval_callback():
         return await chat_interface.ask_for_approval_panel("Tool Execution Approval Required")
@@ -411,7 +411,8 @@ async def chat_interface(
     while not alive:
         if not target:
             # Prompt user for target if none provided
-            console_printer.print("[yellow]No target specified. Please provide a target URL.[/yellow]")
+            console_printer.print("[yellow]No target specified. \
+Please provide a target URL.[/yellow]")
             target = await chat_interface.ask_with_ptk_panel(
                 title="Target URL",
                 placeholder="Enter the target URL (e.g., https://example.com) > "
@@ -472,12 +473,13 @@ async def chat_interface(
                 knowledge_chunks_data=kb_chunks
             )
         else:
-            console_printer.print(f"[yellow]Warning: Knowledge base folder '{knowledge_base}' does not exist or is not a directory. Skipping knowledge base initialization.[/yellow]")
+            console_printer.print(f"[yellow]Warning: Knowledge base folder '{knowledge_base}' \
+does not exist or is not a directory. Skipping knowledge base initialization.[/yellow]")
 
 
     # Agent interruption flag
     agent_interrupted = False
-    
+
     def interrupt_agent():
         nonlocal agent_interrupted
         agent_interrupted = True
@@ -572,12 +574,12 @@ async def chat_interface(
                     # Skip printing DeferredToolRequests objects
                     if hasattr(item, 'output') and isinstance(item.output, DeferredToolRequests):
                         continue
-                    
+
                     # Special handling for RequesterOutput - print just the reasoning
                     if isinstance(item, RequesterOutput):
                         console_printer.print(f"[bold green]Requester Analysis:[/bold green] {item.reasoning}")
                         continue
-                    
+
                     # Check if this is the final result (JudgeOutput)
                     if isinstance(item, JudgeOutput):
                         judge_output = item
@@ -652,7 +654,15 @@ async def chat_interface(
                 console_printer.print("\n[bold cyan]Solution:[/bold cyan]")
                 console_printer.print(f"{judge_output.output.solution}")
 
+            # Summarize workflow context after completion to manage token limits
+            try:
+                console_printer.print("\n[bold blue]Summarizing workflow context...[/bold blue]")
+                await workflow_agent.summarize_workflow_context()
+            except Exception as e:
+                console_printer.print(f"[yellow]Warning: Could not summarize context: {e}[/yellow]")
+
             user_prompt = None
+            
     except KeyboardInterrupt:
         console_printer.print("\n[yellow]Received Ctrl+C. Exiting gracefully...[/yellow]")
         console_printer.print("[green]Thank you for using Deadend CLI![/green]")
