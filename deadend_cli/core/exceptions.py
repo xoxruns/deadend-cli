@@ -21,3 +21,6 @@ class AgentTimeoutError(DeadendError):
 
 class VulnerabilityTestingError(DeadendError):
     """Error during vulnerability testing"""
+
+class AskForApprovalException(Exception):
+    """Ask for approval"""

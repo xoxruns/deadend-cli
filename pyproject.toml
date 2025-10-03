@@ -71,6 +71,10 @@ test = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["deadend_cli"]
+include = [
+    "deadend_cli/prompts/*.jinja2",
+    "deadend_cli/prompts/tools/*.jinja2",
+]
 
 [build-system]
 requires = ["hatchling"]

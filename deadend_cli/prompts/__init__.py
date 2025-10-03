@@ -9,11 +9,12 @@ dynamic prompts, agent instructions, and tool descriptions using Jinja2
 templates for the security research framework.
 """
 
-from .template_renderer import TemplateToolRenderer, TemplateAgentRenderer, render_tool_description, render_agent_instructions
+from .template_renderer import TemplateToolRenderer, TemplateAgentRenderer,\
+     render_tool_description, render_agent_instructions
 
-__all__ = [ 
-    render_agent_instructions, 
-    render_tool_description, 
-    TemplateAgentRenderer, 
-    TemplateToolRenderer    
+__all__ = [
+    render_agent_instructions,
+    render_tool_description,
+    TemplateAgentRenderer,
+    TemplateToolRenderer
 ]

@@ -63,22 +63,35 @@ class ShellRunner:
 
         self.cmd_log = {}
     
-    def run_command(self, new_cmd: str):
+    def run_command(self, new_cmd: str, timeout_seconds: int = None):
         """
         Execute a command in the sandbox and log the results.
         
         Args:
             new_cmd: The shell command to execute
+            timeout_seconds: Optional timeout for command execution
         """
-        result = self.sandbox.execute_command(new_cmd, False)
+        result = self.sandbox.execute_command(
+            new_cmd, 
+            stream=False, 
+            timeout_seconds=timeout_seconds,
+            shell_execution=True
+        )
         cmds_number = len(self.cmd_log.keys())
         print(f"command run function inside shellrunner : {result}")
+        
+        # Handle timeout cases
+        if result.get("timed_out", False):
+            stderr = f"Command timed out after {timeout_seconds}s: {result.get('stderr', '')}"
+        else:
+            stderr = result.get("stderr", "")
+            
         self.cmd_log[cmds_number+1] = CmdLog(
             stdin=new_cmd,
             stdout=result["stdout"],
-            stderr=result["stderr"] 
+            stderr=stderr
         )
-        return 
+        return result 
 
     def get_cmd_log(self) -> Dict[int, CmdLog]:
         """

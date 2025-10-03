@@ -15,13 +15,12 @@ import asyncio
 import sys
 from enum import Enum
 from typing import Dict, List, Callable, Optional
-import logfire
 from rich.console import Console
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.box import ROUNDED
 from prompt_toolkit.application import Application
-from prompt_toolkit.widgets import TextArea, Frame, Label
+from prompt_toolkit.widgets import TextArea, Frame, Label, RadioList
 from prompt_toolkit.layout import Layout as PTKLayout
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.styles import Style
@@ -38,6 +37,7 @@ from deadend_cli.core.agents.webapp_recon_agent import RequesterOutput
 from deadend_cli.core.agents.judge import JudgeOutput
 from deadend_cli.core.utils.network import check_target_alive
 from deadend_cli.core.models import ModelRegistry
+from pydantic_ai import DeferredToolRequests
 from .console import console_printer
 
 # Defining Agent modes
@@ -60,13 +60,8 @@ def print_pydantic_model(obj: BaseModel, title: str = "Agent Output") -> None:
     
     # Add each field to the table
     for field_name, field_value in obj.model_dump().items():
-        # Format the value for display
-        if isinstance(field_value, str) and len(field_value) > 100:
-            # Truncate long strings
-            display_value = field_value[:100] + "..." if len(field_value) > 100 else field_value
-        else:
-            display_value = str(field_value)
-        
+        # Display the full value without truncation
+        display_value = str(field_value)
         table.add_row(field_name, display_value)
     
     # Create a panel with the table
@@ -187,6 +182,77 @@ class ChatInterface:
         self.console.print("[bold green] Starting Agent Mode: Chat interface.[/bold green]")
         self.console.print("Type '/help' for commands, '/quit' to exit.")
 
+    async def ask_for_approval_panel(self, title: str = "Tool Approval Required") -> Optional[str]:
+        """Prompt for tool execution approval using Prompt Toolkit with choices.
+        
+        Args:
+            title: Title text to display with the confirmation dialog.
+            
+        Returns:
+            'yes' for approval, 'no' for rejection, or None if cancelled
+        """
+        try:
+            style = Style.from_dict({
+                "frame.border": "ansiyellow",
+                "radio-checked": "ansigreen",
+                "radio-unchecked": "ansired",
+            })
+
+            # Define approval choices
+            choices = [
+                ("yes", "Approve tool execution"),
+                ("no", "Deny tool execution"),
+            ]
+
+            # Create radio list for choices, default to yes
+            radio_list = RadioList(choices, default="yes")
+            # Set default selection to "yes"
+            radio_list.current_value = "yes"
+
+            # Create confirmation prompt text
+            prompt_text = Label(text="Do you approve these tool executions?", style="ansiwhite")
+
+            # Create footer with instructions
+            footer_text = "Commands: ↑/↓=Navigate | Space=Toggle | Enter=Submit | Ctrl+C=Cancel"
+            footer = Label(text=footer_text, style="ansiblack")
+
+            root_container = HSplit([
+                Label(text=title, style="bold ansiyellow"),
+                prompt_text,
+                Frame(body=radio_list),
+                footer,
+            ])
+
+            kb = KeyBindings()
+
+            @kb.add("c-c")
+            def _(event):  # type: ignore[no-redef]
+                event.app.exit(result=None)  # Cancel without selection
+
+            # Override RadioList's Enter behavior to exit with result
+            def custom_enter_handler(event):
+                radio_list._handle_enter()
+                selected_value = radio_list.current_value
+                event.app.exit(result=selected_value)
+
+            # Replace RadioList's enter binding
+            radio_list.control.key_bindings.add("enter")(custom_enter_handler)
+
+            app = Application(
+                layout=PTKLayout(container=root_container),
+                key_bindings=kb,
+                full_screen=False,
+                mouse_support=False,
+                style=style,
+                min_redraw_interval=0.01,
+            )
+            app.layout.focus(radio_list)
+
+            return await app.run_async()
+        except KeyboardInterrupt:
+            console_printer.print("\n[yellow]Approval cancelled.[/yellow]")
+            return None
+
     async def ask_with_ptk_panel(
             self,
             title: str = "Prompt",
@@ -222,7 +288,7 @@ class ChatInterface:
             # Create footer with available commands
             footer_text = "Commands: Ctrl+C=Exit | Ctrl+I=Interrupt | Enter=Submit | /help=Help | /clear=Clear | /new-target=New Target"
             footer = Label(text=footer_text, style="ansiblack")
-            
+
             root_container = HSplit([
                 Label(text=title, style="bold ansicyan"),
                 Frame(body=input_field),
@@ -236,17 +302,17 @@ class ChatInterface:
             input_field.accept_handler = _accept_handler
 
             @kb.add("c-c")
-            def _(event):  # type: ignore[no-redef]
+            def _(event):
                 event.app.exit(result=None)
 
             @kb.add("c-i")
-            def _(event):  # type: ignore[no-redef]
+            def _(event):
                 if interrupt_callback:
                     interrupt_callback()
                 event.app.exit(result="__INTERRUPT__")
 
             @kb.add("enter")
-            def _(event):  # type: ignore[no-redef]
+            def _(event):
                 text = input_field.text
                 if text.startswith("/"):
                     # Handle commands
@@ -311,7 +377,7 @@ async def chat_interface(
     # Settings up sandbox
     try:
         sandbox_manager = sandbox_setup()
-        sandbox_id = sandbox_manager.create_sandbox("kali_deadend")
+        sandbox_id = sandbox_manager.create_sandbox("xoxruns/sandboxed_kali", network_name="host")
         sandbox = sandbox_manager.get_sandbox(sandbox_id=sandbox_id)
     except Exception as e:
         console_printer.print(f"[yellow]Sandbox manager could not be started : {e}. Continuing without sandbox.[/yellow]")
@@ -327,6 +393,12 @@ async def chat_interface(
         code_indexer_db=rag_db,
         sandbox=sandbox
     )
+    
+    # Set up approval callback to use Prompt Toolkit
+    async def approval_callback():
+        return await chat_interface.ask_for_approval_panel("Tool Execution Approval Required")
+    
+    workflow_agent.set_approval_callback(approval_callback)
     # Setup available agents
     available_agents = {
         'webapp_recon': "Expert cybersecurity agent that enumerates a web target to understand the architecture and understand the endpoints and where an attack vector could be tested.",
@@ -334,7 +406,6 @@ async def chat_interface(
         'router_agent': 'Router agent, expert that routes to the specific agent needed to achieve the next step of the plan.'
     }
     workflow_agent.register_agents(available_agents)
-    workflow_agent.register_sandbox_runner()
     # Check if the provided target is reachable before proceeding
     alive = False
     while not alive:
@@ -486,79 +557,75 @@ async def chat_interface(
             if not user_prompt:
                 break
 
-            # Reset interruption flag
+            # Reset interruption flag and workflow state for new execution
             agent_interrupted = False
-
-            # Reset workflow state for new execution
             workflow_agent.reset_workflow_state()
 
-            # Handle workflow execution with yielded messages
             judge_output = None
+            try:
+                async for item in workflow_agent.start_workflow(
+                    prompt=user_prompt,
+                    target=target,
+                    validation_type=None,
+                    validation_format=None
+                ):
+                    # Skip printing DeferredToolRequests objects
+                    if hasattr(item, 'output') and isinstance(item.output, DeferredToolRequests):
+                        continue
+                    
+                    # Special handling for RequesterOutput - print just the reasoning
+                    if isinstance(item, RequesterOutput):
+                        console_printer.print(f"[bold green]Requester Analysis:[/bold green] {item.reasoning}")
+                        continue
+                    
+                    # Check if this is the final result (JudgeOutput)
+                    if isinstance(item, JudgeOutput):
+                        judge_output = item
 
-            # Show running status
-            with console_printer.status("[bold blue]Agent workflow running...", spinner="dots2"):
-                try:
-                    async for item in workflow_agent.start_workflow(
-                        prompt=user_prompt,
-                        target=target,
-                        validation_type=None,
-                        validation_format=None
-                    ):
-                        # Check if this is the final result (JudgeOutput)
-                        if isinstance(item, JudgeOutput):
-                            judge_output = item
-
-                        # Check if this is a Pydantic BaseModel object
-                        if isinstance(item, BaseModel):
-                            # Special handling for RouterOutput - print as simple text
-                            if type(item).__name__ == "RouterOutput":
-                                console_printer.print(f"[cyan]Router:[/cyan] {item.next_agent_name}")
-                                console_printer.print(f"[cyan]Reasoning:[/cyan] {item.reasoning}")
-                            else:
-                                # Determine the type of model for better title
-                                model_type = type(item).__name__
-                                print_pydantic_model(item, f"{model_type} Output")
-                        # Check if this is a list of tasks (from PlannerOutput)
-                        elif isinstance(item, list) and len(item) > 0 and hasattr(item[0], 'goal'):
-                            # Create a table for tasks
-                            task_table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
-                            task_table.add_column("Step", style="cyan", no_wrap=True)
-                            task_table.add_column("Goal", style="white")
-                            task_table.add_column("Status", style="yellow")
-                            task_table.add_column("Output", style="green")
-                            
-                            for i, task in enumerate(item, 1):
-                                task_table.add_row(
-                                    str(i),
-                                    task.goal,
-                                    task.status,
-                                    task.output
-                                )
-                            
-                            task_panel = Panel(
-                                task_table,
-                                title="[bold green]Planned Tasks[/bold green]",
-                                border_style="green",
-                                box=box.ROUNDED
-                            )
-                            console_printer.print(task_panel)
+                    # Check if this is a Pydantic BaseModel object
+                    if isinstance(item, BaseModel):
+                        # Special handling for RouterOutput - print as simple text
+                        if type(item).__name__ == "RouterOutput":
+                            console_printer.print(f"[cyan]Router:[/cyan] \
+{item.next_agent_name}")
+                            console_printer.print(f"[cyan]Reasoning:[/cyan] {item.reasoning}")
                         else:
-                            # Print regular string messages
-                            console_printer.print(item)
+                            # Determine the type of model for better title
+                            model_type = type(item).__name__
+                            print_pydantic_model(item, f"{model_type} Output")
 
-                        # Check for interruption
-                        if agent_interrupted or workflow_agent.interrupted:
-                            break
+                    elif isinstance(item, list) and len(item) > 0 and hasattr(item[0], 'goal'):
+                        # Create a simple text display for tasks without truncation
+                        tasks_text = "[bold green]Planned Tasks[/bold green]\n\n"
+                        for i, task in enumerate(item, 1):
+                            tasks_text += f"[cyan]Step {i}:[/cyan]\n"
+                            tasks_text += f"[white]Goal:[/white] {task.goal}\n"
+                            tasks_text += f"[yellow]Status:[/yellow] {task.status}\n"
+                            tasks_text += f"[green]Output:[/green]\n{task.output}\n\n"
 
-                        # Small delay to allow for interruption
-                        await asyncio.sleep(0.1)
+                        task_panel = Panel(
+                            tasks_text.strip(),
+                            title="Tasks Overview",
+                            border_style="green",
+                            box=box.ROUNDED
+                        )
+                        console_printer.print(task_panel)
+                    else:
+                        # Print regular string messages
+                        console_printer.print(item)
 
-                except InterruptedError as e:
-                    console_printer.print(f"[yellow]Workflow interrupted: {e}[/yellow]")
-                    judge_output = None
-                except Exception as e:
-                    console_printer.print(f"[red]Workflow error: {e}[/red]")
-                    judge_output = None
+                    # Check for interruption
+                    if agent_interrupted or workflow_agent.interrupted:
+                        break
+
+                    # Small delay to allow for interruption
+                    await asyncio.sleep(0.1)
+            except InterruptedError as e:
+                console_printer.print(f"[yellow]Workflow interrupted: {e}[/yellow]")
+                judge_output = None
+            except Exception as e:
+                console_printer.print(f"[red]Workflow error: {e}[/red]")
+                judge_output = None
 
             # Check if agent was interrupted
             if agent_interrupted or workflow_agent.interrupted:
@@ -585,8 +652,7 @@ async def chat_interface(
                 console_printer.print("\n[bold cyan]Solution:[/bold cyan]")
                 console_printer.print(f"{judge_output.output.solution}")
 
-            # Reset user prompt to ask for a new one in the next iteration
-            user_prompt = None           
+            user_prompt = None
     except KeyboardInterrupt:
         console_printer.print("\n[yellow]Received Ctrl+C. Exiting gracefully...[/yellow]")
         console_printer.print("[green]Thank you for using Deadend CLI![/green]")

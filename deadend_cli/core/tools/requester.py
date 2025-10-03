@@ -10,6 +10,8 @@ from asgiref.sync import sync_to_async
 import httptools
 
 from pydantic_ai import RunContext
+from rich.panel import Panel
+from rich import box
 from deadend_cli.cli.console import console_printer
 
 
@@ -25,8 +27,8 @@ class Requester:
         self.ssl_context = context
 
     @sync_to_async
-    def send_raw_data(self, host, port, target_host, request_data, *, is_tls=False, via_proxy=False):
-        # checking if the request received has an HTTP format. 
+    def send_raw_data(self, host, port, target_host, request_data, is_tls=False, via_proxy=False):
+        # checking if the request received has an HTTP format.
         bytes_request=request_data.encode('utf-8')
         # Validate the HTTP request and report issues before sending
         valid, report = analyze_http_request_text(request_data)
@@ -50,7 +52,34 @@ class Requester:
             via_proxy=via_proxy,
             ssl_context=self.ssl_context,
         )
-        console_printer.print(response)
+        
+        # Decode and format the response for readability in a panel
+        if isinstance(response, bytes):
+            try:
+                decoded_response = response.decode('utf-8', errors='replace')
+                response_panel = Panel(
+                    decoded_response,
+                    title="[bold green]HTTP Response[/bold green]",
+                    border_style="green",
+                    box=box.ROUNDED
+                )
+                console_printer.print(response_panel)
+            except Exception as e:
+                error_panel = Panel(
+                    f"[red]Error decoding response: {e}[/red]\n\n[yellow]Raw response (first 200 chars):[/yellow]\n{str(response)[:200]}",
+                    title="[bold red]Decode Error[/bold red]",
+                    border_style="red",
+                    box=box.ROUNDED
+                )
+                console_printer.print(error_panel)
+        else:
+            response_panel = Panel(
+                str(response),
+                title="[bold green]HTTP Response[/bold green]",
+                border_style="green",
+                box=box.ROUNDED
+            )
+            console_printer.print(response_panel)
         return response
         # else: 
         #     # TODO: a better error handling must be done here to return why the request is malformed.
@@ -65,19 +94,19 @@ def parse_http_request(raw_data):
             self.body = b''
             self.complete = False
             self.method = None
-        
+
         def on_url(self, url):
             self.url = url.decode('utf-8')
-        
+
         def on_header(self, name, value):
             self.headers[name.decode('utf-8').lower()] = value.decode('utf-8')
-        
+
         def on_body(self, body):
             self.body += body
-        
+
         def on_message_complete(self):
             self.complete = True
-    
+
     def _is_valid_request(parser):
         """
         this function validates an HTTP request. 
@@ -92,7 +121,7 @@ def parse_http_request(raw_data):
         for header in required_headers:
             if header not in parser.headers:
                 return False
-            
+
         # if 'content-length' in parser.headers:
         #     try:
         #         content_length = int(parser.headers['content-length'])
@@ -102,11 +131,11 @@ def parse_http_request(raw_data):
         #             return False
         #     except ValueError:
         #         return False
-        
+
         if 'content-length' in parser.headers and 'transfer-encoding' in parser.headers:
             if 'chunked' in parser.headers['transfer-encoding']:
                 return False  # Can't have both Content-Length and chunked encoding
-        
+
         method = parser.method if hasattr(parser, 'method') else None
         if method in ['POST', 'PUT', 'PATCH']:
             # These methods should have content-type for body data
@@ -133,7 +162,7 @@ def parse_http_request(raw_data):
     except httptools.HttpParserError:
         # print("HTTPParserError : Malformed HTTP request.")
         return None
-    
+
 
 def analyze_http_request_text(raw_request_text: str) -> tuple[bool, dict]:
     """
@@ -250,19 +279,44 @@ def detect_tls_support(host: str, port: int, *, via_proxy: bool, proxy_addr: tup
     Probe if the target supports TLS, whether verification passes, and if a client certificate is required.
     Returns dict: { 'is_tls': bool, 'verification_ok': bool | None, 'client_cert_required': bool | None, 'error': str | None }
     """
+    # Validate inputs
+    if not host or not isinstance(host, str):
+        return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': f'Invalid host: {host}'}
+    
+    if not port or not isinstance(port, int) or port < 1 or port > 65535:
+        return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': f'Invalid port: {port}'}
+    
     tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcp.settimeout(timeout)
+    
     try:
         if via_proxy:
             if not proxy_addr:
                 proxy_addr = ("localhost", 8080)
+            # print(f"[DEBUG] Connecting to proxy: {proxy_addr}")
             tcp.connect(proxy_addr)
             err = _proxy_connect_tunnel(tcp, f"{host}:{port}")
             if err is not None:
-                return { 'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': err.decode('utf-8', 'ignore') }
+                return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': err.decode('utf-8', 'ignore')}
         else:
+            # print(f"[DEBUG] Connecting to: {host}:{port}")
             tcp.connect((host, port))
+            
+    except socket.timeout:
+        return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': f'Connection timeout to {host}:{port}'}
+    except ConnectionRefusedError:
+        return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': f'Connection refused to {host}:{port}'}
+    except socket.gaierror as e:
+        error_msg = f'DNS resolution failed for {host}: {str(e)}'
+        if e.errno == -2:
+            error_msg += f'\n   Possible causes: Invalid hostname, DNS server issues, or host not accessible'
+        return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': error_msg}
+    except OSError as e:
+        return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': f'Network error to {host}:{port}: {str(e)}'}
+    except Exception as e:
+        return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': f'Unexpected error connecting to {host}:{port}: {str(e)}'}
 
+    try:
         # First try strict verification
         is_tls, verification_ok, cert_required, err_msg, tls_sock = _attempt_tls_handshake(tcp, host, verify=True)
         if is_tls and tls_sock is not None:
@@ -278,14 +332,29 @@ def detect_tls_support(host: str, port: int, *, via_proxy: bool, proxy_addr: tup
                 # need a fresh TCP connection
                 tcp2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 tcp2.settimeout(timeout)
-                if via_proxy:
-                    proxy = proxy_addr or ("localhost", 8080)
-                    tcp2.connect(proxy)
-                    err2 = _proxy_connect_tunnel(tcp2, f"{host}:{port}")
-                    if err2 is not None:
-                        return { 'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': err2.decode('utf-8', 'ignore') }
-                else:
-                    tcp2.connect((host, port))
+                try:
+                    if via_proxy:
+                        proxy = proxy_addr or ("localhost", 8080)
+                        # print(f"[DEBUG] Retry connecting to proxy: {proxy}")
+                        tcp2.connect(proxy)
+                        err2 = _proxy_connect_tunnel(tcp2, f"{host}:{port}")
+                        if err2 is not None:
+                            return {'is_tls': False, 'verification_ok': None, 'client_cert_required': None, 'error': err2.decode('utf-8', 'ignore')}
+                    else:
+                        # print(f"[DEBUG] Retry connecting to: {host}:{port}")
+                        tcp2.connect((host, port))
+                except socket.timeout:
+                    return {'is_tls': True, 'verification_ok': False, 'client_cert_required': False, 'error': f'Retry connection timeout to {host}:{port}'}
+                except ConnectionRefusedError:
+                    return {'is_tls': True, 'verification_ok': False, 'client_cert_required': False, 'error': f'Retry connection refused to {host}:{port}'}
+                except socket.gaierror as e:
+                    error_msg = f'Retry DNS resolution failed for {host}: {str(e)}'
+                    if e.errno == -2:
+                        error_msg += '\n   Possible causes: Invalid hostname, DNS server issues, or host not accessible'
+                    return {'is_tls': True, 'verification_ok': False, 'client_cert_required': False, 'error': error_msg}
+                except OSError as e:
+                    return {'is_tls': True, 'verification_ok': False, 'client_cert_required': False, 'error': f'Retry network error to {host}:{port}: {str(e)}'}
+                    
                 is_tls2, verification_ok2, cert_required2, err_msg2, tls_sock2 = _attempt_tls_handshake(tcp2, host, verify=False)
                 if is_tls2 and tls_sock2 is not None:
                     try:
@@ -296,6 +365,11 @@ def detect_tls_support(host: str, port: int, *, via_proxy: bool, proxy_addr: tup
                 return { 'is_tls': is_tls2, 'verification_ok': False, 'client_cert_required': cert_required2, 'error': err_msg2 or err_msg }
             except Exception as e:
                 return { 'is_tls': True, 'verification_ok': False, 'client_cert_required': False, 'error': str(e) }
+            finally:
+                try:
+                    tcp2.close()
+                except Exception:
+                    pass
 
         if cert_required:
             return { 'is_tls': True, 'verification_ok': True, 'client_cert_required': True, 'error': err_msg }
@@ -413,15 +487,22 @@ async def send_payload(
     requester = Requester(verify_ssl=False)
     def _parse_target(th: str):
         parts = th.split(":")
-        if len(parts) == 2:
-            h, p = parts[0], parts[1]
+        if len(parts) >= 2:
+            host = ":".join(parts[:-1])
+            port = parts[-1]
         else:
-            h, p = th, "80"
+            host, port = th, "80"
+
+        # Handle URLs like "http://host:port" by removing protocol prefix
+        if host.startswith("http://"):
+            host = host[7:] 
+        elif host.startswith("https://"):
+            host = host[8:]
         try:
-            port_int = int(p)
+            port_int = int(port)
         except ValueError:
             port_int = 80
-        return h, port_int
+        return host, port_int
 
     host, port = _parse_target(target_host)
 

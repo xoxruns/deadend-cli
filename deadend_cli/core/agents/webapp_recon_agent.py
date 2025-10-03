@@ -8,12 +8,10 @@ This module implements an AI agent that performs comprehensive reconnaissance
 on web applications, including directory enumeration, technology detection,
 vulnerability scanning, and information gathering for security assessments.
 """
-
-from pydantic import BaseModel
-from pydantic_ai import Tool
-from pydantic_ai.usage import Usage, UsageLimits
 from typing import Any
-from .factory import AgentRunner
+from pydantic import BaseModel
+from pydantic_ai import Tool, DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import RunUsage, UsageLimits
 from deadend_cli.core.models import AIModel
 from deadend_cli.core.tools import (
     sandboxed_shell_tool, 
@@ -21,6 +19,7 @@ from deadend_cli.core.tools import (
     send_payload, 
     webapp_code_rag
 )
+from deadend_cli.core.agents.factory import AgentRunner
 from deadend_cli.prompts import render_agent_instructions, render_tool_description
 
 class RequesterOutput(BaseModel):
@@ -35,16 +34,17 @@ class WebappReconAgent(AgentRunner):
     """
 
     def __init__(
-        self, 
-        model: AIModel, 
-        deps_type: Any | None, 
-        target_information: str
+        self,
+        model: AIModel,
+        deps_type: Any | None,
+        target_information: str,
+        requires_approval: bool,
     ):
         tools_metadata = {
             "is_valid_request": render_tool_description("is_valid_request"),
             "send_payload": render_tool_description("send_payload"),
-            "sandboxed_shell_tool": render_tool_description("sandboxed_shell_tool"),
-            "webapp_code_rag": render_tool_description("webapp_code_rag")
+            # "sandboxed_shell_tool": render_tool_description("sandboxed_shell_tool"),
+            # "webapp_code_rag": render_tool_description("webapp_code_rag")
         } 
 
         self.instructions = render_agent_instructions(
@@ -56,17 +56,30 @@ class WebappReconAgent(AgentRunner):
             name="webapp_recon",
             model=model, 
             instructions=self.instructions,
-            deps_type=deps_type, 
-            output_type=RequesterOutput, 
+            deps_type=deps_type,
+            output_type=[RequesterOutput, DeferredToolRequests],
             tools=[
                 Tool(is_valid_request),
-                Tool(send_payload),
-                Tool(sandboxed_shell_tool),
-                Tool(webapp_code_rag)
+                Tool(send_payload, requires_approval=requires_approval),
+                # Tool(sandboxed_shell_tool),
+                # Tool(webapp_code_rag)
             ]
         )
 
-    async def run(self, user_prompt, deps, message_history, usage: Usage, usage_limits:UsageLimits):
-        return await super().run(user_prompt=user_prompt, deps=deps, message_history=message_history, usage=usage, usage_limits=usage_limits)
-    
-
+    async def run(
+        self,
+        user_prompt,
+        deps,
+        message_history,
+        usage: RunUsage,
+        usage_limits:UsageLimits,
+        deferred_tool_results: DeferredToolResults | None,
+    ):
+        return await super().run(
+            user_prompt=user_prompt,
+            deps=deps,
+            message_history=message_history,
+            usage=usage,
+            usage_limits=usage_limits,
+            deferred_tool_results=deferred_tool_results
+        )

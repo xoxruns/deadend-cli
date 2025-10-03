@@ -9,8 +9,9 @@ configuring AI agents with proper error handling, retry logic, and
 usage tracking for the security research framework.
 """
 
-from pydantic_ai import Agent
-from pydantic_ai.usage import Usage, UsageLimits
+from pydantic_ai import Agent, DeferredToolResults
+from pydantic_ai.usage import RunUsage, UsageLimits
+
 from typing import Any
 
 from deadend_cli.core.models import AIModel
@@ -20,19 +21,19 @@ from tenacity import (
     wait_random_exponential,
 )
 
-class AgentRunner: 
+class AgentRunner:
     """
     AgentRunner sets up the Pydantic_ai agent.
     This can be viewed as a wrapper that adds clean up to agent calls
 
     """
-    
+
     def __init__(
-        self, 
-        name: str, 
-        model: AIModel, 
-        instructions: str | None, 
-        deps_type: Any | None, 
+        self,
+        name: str,
+        model: AIModel,
+        instructions: str | None,
+        deps_type: Any | None,
         output_type: Any | None,
         tools: list,
     ):
@@ -40,21 +41,29 @@ class AgentRunner:
         self.agent = Agent(
             model=model,
             instructions=instructions,
-            deps_type=deps_type, 
-            output_type=output_type, 
+            deps_type=deps_type,
+            output_type=output_type,
             tools=tools
         )
         self.response = None
-        
-    @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
-    async def run(self, user_prompt, deps, message_history, usage: Usage | None, usage_limits: UsageLimits | None):
-        # Normal running 
+
+    async def run(
+        self,
+        user_prompt,
+        deps,
+        message_history,
+        usage: RunUsage | None,
+        usage_limits: UsageLimits | None,
+        deferred_tool_results: DeferredToolResults | None = None,
+    ):
+        # Normal running
         return await self.agent.run(
-            user_prompt=user_prompt, 
+            user_prompt=user_prompt,
             deps=deps,
-            message_history=message_history, 
-            usage=usage, 
-            usage_limits=usage_limits
+            message_history=message_history,
+            usage=usage,
+            usage_limits=usage_limits,
+            deferred_tool_results=deferred_tool_results
         )
 
     def get_response(self):

@@ -12,7 +12,9 @@ security tools and databases for comprehensive security assessments.
 import os
 import mimetypes
 import uuid
-from pydantic_ai.usage import Usage, UsageLimits
+import json
+from pydantic_ai import DeferredToolRequests, DeferredToolResults
+from pydantic_ai.usage import RunUsage, UsageLimits
 from openai import AsyncOpenAI
 import docker
 
@@ -26,7 +28,7 @@ from deadend_cli.core.embedders.knowledge_base_indexer import KnowledgeBaseIndex
 from deadend_cli.core.context.context_engine import ContextEngine
 from deadend_cli.core.utils.structures import ShellRunner, WebappreconDeps
 from deadend_cli.core.agents import (
-    AgentRunner, 
+    AgentRunner,
     Planner, RagDeps, PlannerOutput,
     RouterAgent, RouterOutput,
     JudgeAgent,
@@ -71,7 +73,7 @@ class WorkflowRunner:
     model: AIModel
     code_indexer_db: RetrievalDatabaseConnector
     sandbox: Sandbox
-    context: ContextEngine = ContextEngine()
+    context: ContextEngine
     goal_achieved: bool = False
     assets_folder: str
     session_id: uuid.UUID
@@ -98,6 +100,10 @@ class WorkflowRunner:
         self.sandbox = sandbox
         self.session_id = uuid.uuid4()
         self.interrupted = False
+        self.approval_callback = None  # Callback function for user approval
+        
+        # Initialize context engine with session ID
+        self.context = ContextEngine(session_id=self.session_id)
 
     def interrupt_workflow(self) -> None:
         """Interrupt the workflow execution.
@@ -112,11 +118,21 @@ class WorkflowRunner:
         """Reset the workflow state for a new execution.
         
         This method resets the goal_achieved flag and interrupted flag
-        to allow for a fresh workflow execution.
+        to allow for a fresh workflow execution. Also creates a new context
+        engine with a new session ID.
         """
         self.goal_achieved = False
         self.interrupted = False
+        
         console_printer.print("[green]Workflow state reset for new execution[/green]")
+
+    def set_approval_callback(self, callback):
+        """Set a callback function for user approval input.
+        
+        Args:
+            callback: Async function that returns user input for approval
+        """
+        self.approval_callback = callback
 
     def _set_assets(self, assets_folder: str) -> None:
         """Set the assets folder path.
@@ -150,8 +166,15 @@ class WorkflowRunner:
     def init_webtarget_indexer(self, target: str) -> None:
         """Initialize the web target indexer for the given target.
         
+        Sets up the source code indexer to crawl and analyze a web target.
+        This enables the agent to understand the target's structure and retrieve
+        relevant code sections during conversation.
+        
         Args:
-            target: URL of the web target to index
+            target: URL of the web target to index (e.g., "https://example.com")
+            
+        Note:
+            Must be called before crawl_target() and embed_target() methods.
         """
         self.target = target
         self.code_indexer = SourceCodeIndexer(target=self.target, session_id=self.session_id)
@@ -159,8 +182,17 @@ class WorkflowRunner:
     async def crawl_target(self):
         """Crawl the web target to gather resources.
         
+        Asynchronously crawls the configured web target to extract discoverable
+        resources including pages, endpoints, and other web assets.
+        
         Returns:
-            Crawled resources from the target
+            Crawled web resources suitable for embedding and analysis
+            
+        Raises:
+            Various web crawling exceptions if the target is unreachable
+            
+        Note:
+            Requires init_webtarget_indexer() to be called first.
         """
         return await self.code_indexer.crawl_target()
 
@@ -206,15 +238,18 @@ class WorkflowRunner:
         """
         self.available_agents = agents
 
-    def register_sandbox_runner(self) -> None:
+    def register_sandbox_runner(self, network_name: str = "host") -> None:
         """Initialize and start the Docker sandbox environment.
+        
+        Args:
+            network_name: Docker network name for the container (default: "host")
         
         Raises:
             docker.errors.DockerException: If Docker is not available or container fails to start
         """
         docker_client = docker.from_env()
         sandbox = Sandbox(docker_client=docker_client)
-        sandbox.start(container_image="kali_deadend:latest")
+        sandbox.start(container_image="xoxruns/sandboxed_kali:latest", network_name=network_name)
         console_printer.print(f"[green]Sandbox started: {sandbox}[/green]")
         self.sandbox = sandbox
 
@@ -242,7 +277,7 @@ class WorkflowRunner:
             target=target,
             api_spec="",
         )
-        usage_planner = Usage()
+        usage_planner = RunUsage()
         usage_limits_planner = UsageLimits()
 
         try:
@@ -255,14 +290,14 @@ class WorkflowRunner:
                 openai=openai_embedder,
                 session_id=self.session_id
             )
-            
+
             # Check for interruption after planning
             if self.interrupted:
                 raise InterruptedError("Workflow interrupted after planning")
-                
+
             self.context.set_tasks(resp.output.tasks)
             return resp.output.tasks
-            
+
         except InterruptedError:
             # Re-raise interruption errors
             raise
@@ -287,7 +322,7 @@ class WorkflowRunner:
         # Check for interruption before routing
         if self.interrupted:
             raise InterruptedError("Workflow interrupted before routing")
-            
+
         self.router = RouterAgent(
             model=self.model,
             deps_type=None,
@@ -295,25 +330,26 @@ class WorkflowRunner:
             tools=[]
         )
 
-        usage_router = Usage()
+        usage_router = RunUsage()
         usage_limits_router = UsageLimits()
 
         try:
             resp = await self.router.run(
                 user_prompt=prompt + self.context.get_all_context(),
-                deps=None, 
-                message_history="", 
-                usage=usage_router, 
-                usage_limits=usage_limits_router
+                deps=None,
+                message_history="",
+                usage=usage_router,
+                usage_limits=usage_limits_router,
+                deferred_tool_results=None
             )
-            
+
             # Check for interruption after routing
             if self.interrupted:
                 raise InterruptedError("Workflow interrupted after routing")
 
             self.context.add_next_agent(resp.output)
             return resp.output
-            
+
         except InterruptedError:
             # Re-raise interruption errors
             raise
@@ -335,20 +371,27 @@ class WorkflowRunner:
         match agent_name:
             case "webapp_recon":
                 return WebappReconAgent(
-                    model=self.model, 
-                    deps_type=WebappreconDeps, 
-                    target_information=self.context.target
+                    model=self.model,
+                    deps_type=WebappreconDeps,
+                    target_information=self.context.target,
+                    requires_approval=True
                 )
             case _:
                 self.context.add_not_found_agent(agent_name=agent_name)
                 return RouterAgent(
-                    model=self.model, 
-                    deps_type=None, 
+                    model=self.model,
+                    deps_type=None,
                     tools=[],
                     available_agents=self.available_agents
                 )
 
-    async def run_agent(self, agent_name: str, prompt: str):
+    async def run_agent(
+        self,
+        agent_name: str,
+        prompt: str | None,
+        message_history: str,
+        deferred_tool_results: DeferredToolResults | None = None
+    ):
         """Execute an agent with the given prompt.
         
         Args:
@@ -364,17 +407,21 @@ class WorkflowRunner:
         # Check for interruption before starting agent execution
         if self.interrupted:
             raise InterruptedError("Workflow interrupted before agent execution")
-            
+
         agent = self._get_agent(agent_name=agent_name)
-        usage_agent = Usage()
+        usage_agent = RunUsage()
         usage_limits_agent = UsageLimits()
+        if prompt is None :
+            user_prompt = None
+        else:
+            user_prompt = prompt + self.context.get_all_context()
 
         try:
             if agent.name == "planner_agent":
                 # Check for interruption before planner execution
                 if self.interrupted:
                     raise InterruptedError("Workflow interrupted before planner execution")
-                    
+
                 openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
                 rag_deps = RagDeps(
                     openai=openai_embedder,
@@ -383,17 +430,18 @@ class WorkflowRunner:
                     session_id=self.session_id
                 )
                 resp = await agent.run(
-                    user_prompt=prompt + self.context.get_all_context(),
-                    message_history="",
+                    user_prompt=user_prompt,
+                    message_history=message_history,
                     usage=usage_agent,
                     deps=rag_deps,
-                    usage_limits=usage_limits_agent
+                    usage_limits=usage_limits_agent,
+                    deferred_tool_results=None,
                 )
             elif agent_name == "webapp_recon":
                 # Check for interruption before webapp recon execution
                 if self.interrupted:
                     raise InterruptedError("Workflow interrupted before webapp recon execution")
-                    
+
                 openai_embedder = AsyncOpenAI(api_key=self.config.openai_api_key)
                 shell_runner = ShellRunner("session_agent", self.sandbox)
 
@@ -405,33 +453,35 @@ class WorkflowRunner:
                     session_id=self.session_id
                 )
                 resp = await agent.run(
-                    user_prompt=prompt + self.context.get_all_context(),
-                    message_history="",
+                    user_prompt=user_prompt,
+                    message_history=message_history,
                     usage=usage_agent,
                     deps=webapprecon_deps,
-                    usage_limits=usage_limits_agent
+                    usage_limits=usage_limits_agent,
+                    deferred_tool_results=deferred_tool_results
                 )
             else:
                 # Check for interruption before other agent execution
                 if self.interrupted:
                     raise InterruptedError("Workflow interrupted before agent execution")
-                    
+
                 resp = await agent.run(
-                    user_prompt=prompt + self.context.get_all_context(),
+                    user_prompt=user_prompt,
                     deps=None,
-                    message_history="",
+                    message_history=message_history,
                     usage=usage_agent,
-                    usage_limits=usage_limits_agent
+                    usage_limits=usage_limits_agent,
+                    deferred_tool_results=deferred_tool_results
                 )
 
             # Check for interruption after agent execution
             if self.interrupted:
                 raise InterruptedError("Workflow interrupted after agent execution")
+            if isinstance(resp.output, DeferredToolRequests):
+                return resp
 
-            agent_response = resp.output
-            self.context.add_agent_response(agent_response)
-            return agent_response
-            
+            self.context.add_agent_response(resp.output)
+            return resp
         except InterruptedError:
             # Re-raise interruption errors
             raise
@@ -441,7 +491,13 @@ class WorkflowRunner:
                 raise InterruptedError("Workflow interrupted during agent execution") from e
             raise
 
-    async def start_workflow(self, prompt: str, target: str, validation_type: str | None, validation_format: str | None):
+    async def start_workflow(
+        self,
+        prompt: str,
+        target: str,
+        validation_type: str | None,
+        validation_format: str | None
+        ):
         """Start the main workflow execution.
         
         Args:
@@ -468,14 +524,15 @@ class WorkflowRunner:
             validation_type = "canary"
 
         if validation_format is None:
-            validation_format = "What looks more likely a vulnerability or undefined behavior that is verified with a tool."
+            validation_format = "What looks more likely a vulnerability or undefined behavior\
+                 that is verified with a tool."
 
         judge_agent = JudgeAgent(
             self.model, None, [],
             validation_type=validation_type,
             validation_format=validation_format
         )
-        usage_judge = Usage()
+        usage_judge = RunUsage()
         usage_limits_judge = UsageLimits()
         judge_output = ""
         iteration = 0
@@ -484,7 +541,7 @@ class WorkflowRunner:
             if self.interrupted:
                 console_printer.print("[yellow]Workflow interrupted by user[/yellow]")
                 break
-          
+
             # Route task to appropriate agent
             try:
                 agent_router = await self.route_task(prompt=prompt)
@@ -500,10 +557,37 @@ class WorkflowRunner:
 
             # Execute the selected agent
             try:
-                agent_response = await self.run_agent(self.context.next_agent, prompt)
+                agent_response = await self.run_agent(
+                    agent_name=self.context.next_agent,
+                    prompt=prompt + self.context.get_all_context(),
+                    message_history=""
+                )
+                if isinstance(agent_response.output, DeferredToolRequests):
+                    messages = [self.context.get_all_context()]
+                    messages.extend(agent_response.all_messages())
+                    approval =  await self._get_user_approval_for_tool_requests(
+                        agent_response,
+                        self.context.next_agent
+                    )
+                    if approval:
+                        results = DeferredToolResults()
+                        for call in agent_response.output.approvals:
+                            result = False
+                            if call.tool_name == "send_payload":
+                                result = True
+                            results.approvals[call.tool_call_id] = result
+                        agent_response = await self.run_agent(
+                            self.context.next_agent,
+                            prompt=None,
+                            message_history=messages,
+                            deferred_tool_results=results
+                        )
+                self.context.add_agent_response(agent_response.all_messages_json())
                 yield agent_response
+
             except InterruptedError as e:
-                console_printer.print(f"[yellow]Workflow interrupted during agent execution: {e}[/yellow]")
+                console_printer.print(f"[yellow]Workflow interrupted during agent execution: \
+                    {e}[/yellow]")
                 break
 
             # Check for interruption after agent execution
@@ -512,12 +596,13 @@ class WorkflowRunner:
                 break
 
             iteration += 1
-            
+
             # Check for interruption before judge execution
             if self.interrupted:
-                console_printer.print("[yellow]Workflow interrupted before judge execution[/yellow]")
+                console_printer.print("[yellow]Workflow interrupted before \
+                    judge execution[/yellow]")
                 break
-                
+
             try:
                 judge_output = await judge_agent.run(
                     user_prompt=self.context.get_all_context(),
@@ -527,7 +612,8 @@ class WorkflowRunner:
                     usage_limits=usage_limits_judge
                 )
             except InterruptedError as e:
-                console_printer.print(f"[yellow]Workflow interrupted during judge execution: {e}[/yellow]")
+                console_printer.print(f"[yellow]Workflow interrupted during \
+                    judge execution: {e}[/yellow]")
                 break
 
             judge_str = str(judge_output)
@@ -536,5 +622,49 @@ class WorkflowRunner:
             if judge_output.output.goal_achieved:
                 self.goal_achieved = True
 
-        yield "END"
-        yield judge_output.output  # Yield the final result as the last item
+        yield judge_output.output
+
+    async def _get_user_approval_for_tool_requests(
+        self,
+        deferred_requests: DeferredToolRequests,
+        agent_name: str
+    ) -> bool:
+        """Prompt the user for approval on tool requests that require permission.
+        
+        Args:
+            deferred_requests: The deferred tool requests requiring approval
+            agent_name: Name of the agent requesting tool execution
+            
+        Returns:
+            bool: True if user approves all requests, False otherwise
+        """
+        console_printer.print(f"[bold yellow]Agent '{agent_name}' is requesting tool execution that requires approval.[/bold yellow]")
+
+        # Display the tool requests to the user
+        for i, tool_request in enumerate(deferred_requests.output.approvals):
+            console_printer.print(f"[bold cyan]Tool Request {tool_request.tool_name}:[/bold cyan]")
+            console_printer.print(f"[cyan]Arguments:[/cyan] {json.loads(tool_request.args)['raw_request']}")
+            console_printer.print("")  # Empty line for separation
+
+        # Use the approval callback if provided, otherwise fall back to basic input
+        if hasattr(self, 'approval_callback') and self.approval_callback:
+            try:
+                user_input = await self.approval_callback()
+                if isinstance(user_input, str):
+                    approval = user_input.strip().lower() in ['y', 'yes']
+                else:
+                    approval = bool(user_input)
+                return approval
+            except Exception as e:
+                console_printer.print(f"[red]Error in approval callback: {e}[/red]")
+                return False
+        else:
+            # Fallback to basic input (for backwards compatibility)
+            console_printer.print("[bold yellow]Do you approve these tool executions? (y/N): [/bold yellow]", end="")
+            try:
+                user_input = input().strip().lower()
+                approval = user_input in ['y', 'yes']
+                return approval
+            except (KeyboardInterrupt, EOFError):
+                console_printer.print("\n[yellow]Approval cancelled.[/yellow]")
+                return False

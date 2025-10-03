@@ -12,12 +12,14 @@ from typing import List
 import typer
 import docker
 from rich.console import Console
+import logfire
 
 from deadend_cli.core import config_setup
 from deadend_cli.cli.chat import chat_interface, Modes
 from deadend_cli.cli.eval import eval_interface
 from deadend_cli.cli.banner import print_banner
-from deadend_cli.cli.init import init_cli_config, check_docker, check_pgvector_container, stop_pgvector_container
+from deadend_cli.cli.init import init_cli_config, check_docker, \
+    check_pgvector_container, stop_pgvector_container, setup_pgvector_database
 
 console = Console()
 
@@ -51,16 +53,21 @@ def chat(
         console.print("Please install Docker from: https://docs.docker.com/get-docker/")
         console.print("Make sure Docker daemon is running, then run this command again.")
         raise typer.Exit(1)
-    
-    # Check pgvector database
+
+    # Check pgvector database and setup if not running
     if not check_pgvector_container(docker_client):
-        console.print("\n[red]pgvector database is not running.[/red]")
-        console.print("Please run 'deadend-cli init' to set up the required services.")
-        raise typer.Exit(1)
+        console.print("\n[blue]pgvector database is not running. Setting up...[/blue]")
+        if not setup_pgvector_database(docker_client):
+            console.print("\n[red]Failed to setup pgvector database.[/red]")
+            console.print("Please check Docker logs and try again.")
+            raise typer.Exit(1)
 
     # Init configuration
     config = config_setup()
     print_banner(config=config)
+    # Monitoring
+    # logfire.configure(scrubbing=False)
+    # logfire.instrument_pydantic_ai()
 
     try:
         asyncio.run(

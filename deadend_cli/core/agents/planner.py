@@ -55,7 +55,14 @@ class PlannerAgent(AgentRunner):
         )
     
     async def run(self, user_prompt, deps, message_history, usage, usage_limits):
-        return await super().run(user_prompt=user_prompt, deps=deps, message_history=message_history, usage=usage, usage_limits=usage_limits)
+        return await super().run(
+            user_prompt=user_prompt,
+            deps=deps,
+            message_history=message_history,
+            usage=usage,
+            usage_limits=usage_limits,
+            deferred_tool_results=None,
+        )
 
 
 

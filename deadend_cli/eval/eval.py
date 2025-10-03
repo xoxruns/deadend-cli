@@ -22,12 +22,41 @@ from deadend_cli.core.sandbox import Sandbox
 from deadend_cli.core.workflow_runner import WorkflowRunner
 
 class Subtask(BaseModel):
+    """Represents a single subtask in a guided evaluation workflow.
+    
+    Contains all information needed to execute and validate a specific
+    component of a security challenge evaluation.
+    
+    Attributes:
+        subtask: High-level description of the subtask objective
+        question: Specific question to be answered for this subtask
+        hints: List of helpful hints for approaching the question
+        solution: Expected answer or solution for validation
+    """
     subtask: str = Field(..., description="subtask step generalized")
     question: str = Field(..., description="Question specified to achieve to subtask")
     hints: list[str] = Field(..., description="Hints on how to answer the question")
     solution: str = Field(..., description="Answer to the subtask")
 
 class EvalMetadata(BaseModel):
+    """Metadata containing all information about a security challenge evaluation.
+    
+    Defines the complete context, parameters, and validation criteria for
+    evaluating AI agent performance on security challenges.
+    
+    Attributes:
+        name: Human-readable name of the challenge
+        categories: List of challenge categories (e.g., ['web', 'crypto'])
+        difficulty: Challenge difficulty level (e.g., 'Easy', 'Medium', 'Hard')
+        assets_path: File system path to challenge assets and files
+        target_host: Host address or URL for the target system
+        soft_prompt: Prompt with minimal guidance information
+        hard_prompt: Prompt with detailed guidance and hints
+        subtasks: List of subtasks for guided evaluation mode
+        validation_type: Type of validation ('flag' or 'canary')
+        validation_format: Description of expected solution format
+        solution: Expected challenge solution for validation
+    """
     name: str = Field(..., description="Name of the challenge")
     categories: list[str] = Field(..., description="Challenge categories")
     difficulty: str = Field(..., description="Challenge difficulty")
@@ -62,8 +91,34 @@ async def eval_agent(
         # Knowledge base represents the database RAG added for notes or technical documents.
         output_report: str
     ):
-    """
-    Eval function
+    """Evaluate an AI agent's performance on a security challenge.
+    
+    Executes a comprehensive evaluation of an AI agent against a specific security
+    challenge, including target indexing, agent workflow execution, and result validation.
+    
+    Args:
+        model: AI model instance to evaluate
+        config: Configuration object containing API keys and settings
+        code_indexer_db: Database connector for code indexing and retrieval
+        sandbox: Sandbox environment for secure command execution
+        eval_metadata: Complete metadata defining the challenge and evaluation parameters
+        hard_prompt: Whether to use detailed (hard) or minimal (soft) prompting
+        guided: Whether to use guided subtask-based evaluation
+        human_intervention: Whether to pause for human input during evaluation
+        with_context_engine: Whether to use advanced context engineering
+        with_code_indexing: Whether to perform code indexing of the target
+        with_knowledge_base: Whether to use knowledge base RAG capabilities
+        output_report: Path where evaluation results should be saved
+        
+    Returns:
+        Async evaluation results including agent performance metrics
+        
+    Raises:
+        Various exceptions depending on evaluation step failures
+        
+    Note:
+        This function orchestrates the complete evaluation pipeline including
+        target preparation, agent execution, validation, and reporting.
     """
 
     workflow_agent = WorkflowRunner(
@@ -75,7 +130,7 @@ async def eval_agent(
 
     workflow_agent.add_assets_to_context(eval_metadata.assets_path)
 
-    # TODO: changing the handling of this 
+    # TODO: changing the handling of this
     # by for example adding description templates with jinja2
     available_agents = {
         'webapp_recon': "Expert cybersecurity agent that enumerates a web target to understand the architecture and understand the endpoints and where an attack vector could be tested.",
@@ -84,7 +139,7 @@ async def eval_agent(
     }
     workflow_agent.register_agents(available_agents)
 
-    workflow_agent.register_sandbox_runner()
+    workflow_agent.register_sandbox_runner(network_name="shared_net")
     # Setting up the prompt used 
     if hard_prompt:
         prompt = eval_metadata.hard_prompt
@@ -155,8 +210,17 @@ async def eval_agent(
 
 
 def run_benchmark_script(run_script_path: str):
-    """
-    run_benchmark_script runs the supplied script that starts the challenge in the benchmark
-
+    """Execute a benchmark script to start a challenge environment.
+    
+    Runs the specified script that prepares and starts the challenge environment
+    for benchmark evaluation. This is typically used to set up targets, databases,
+    or other infrastructure required for the evaluation.
+    
+    Args:
+        run_script_path: Path to the script that starts the benchmark challenge
+        
+    Note:
+        Currently implemented as a placeholder. Future implementation will
+        execute the script with proper error handling and environment validation.
     """
     pass

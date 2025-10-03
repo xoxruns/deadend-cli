@@ -20,11 +20,31 @@ from deadend_cli.core.sandbox import Sandbox, SandboxStatus
 from deadend_cli.core.utils.structures import WebappreconDeps, CmdLog
 
 
-def  sandboxed_shell_tool(ctx: RunContext[WebappreconDeps], command: str) -> Dict[int, CmdLog]:
-    # running command 
-    print(f"Command to be ran : {command}")
+def sandboxed_shell_tool(
+    ctx: RunContext[WebappreconDeps],
+    command: str,
+    timeout_seconds: int = 30
+) -> Dict[int, CmdLog]:
+    """Execute a shell command in the sandbox environment.
+    
+    Args:
+        ctx: Runtime context containing dependencies
+        command: Shell command to execute (supports quotes, pipes, redirects)
+        timeout_seconds: Maximum execution time (default: 30 seconds)
+        
+    Returns:
+        Dictionary mapping command numbers to execution results
+    """
+    console_printer.print(f"Command to be executed: {command}")
     if ctx.deps.shell_runner.sandbox.status == SandboxStatus.RUNNING:
-        return ctx.deps.shell_runner.run_command(command)
+        result = ctx.deps.shell_runner.run_command(command, timeout_seconds)
+        console_printer.print(
+            f"Command execution completed in \
+                {result.get('execution_time', 0):.2f}s"
+            )
+        if result.get('timed_out', False):
+            print(f"⚠️  Command timed out after {timeout_seconds} seconds")
+        return ctx.deps.shell_runner.get_cmd_log()
     else:
+        console_printer.print("Sandbox is not running")
         return {}
-
