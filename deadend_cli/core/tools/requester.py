@@ -16,8 +16,21 @@ from deadend_cli.cli.console import console_printer
 
 
 class Requester:
-    """Requester is a object that makes available methods for interacting with low-level sockets."""
+    """
+    Low-level HTTP request handler with raw socket communication capabilities.
+    
+    This class provides methods for sending raw HTTP requests through direct
+    socket connections or proxy tunnels, with support for TLS/SSL connections
+    and certificate verification control.
+    """
     def __init__(self, verify_ssl, proxy_url='http://localhost:8080'):
+        """
+        Initialize the Requester with SSL verification settings.
+        
+        Args:
+            verify_ssl (bool): Whether to verify SSL certificates
+            proxy_url (str): Proxy URL for requests (currently unused but kept for compatibility)
+        """
         # Configure SSL context based on verification preference
         context = ssl.create_default_context()
         if not verify_ssl:
@@ -28,13 +41,31 @@ class Requester:
 
     @sync_to_async
     def send_raw_data(self, host, port, target_host, request_data, is_tls=False, via_proxy=False):
-        # checking if the request received has an HTTP format.
+        """
+        Send raw HTTP request data to a target host.
+        
+        Validates the HTTP request format, sends it via raw socket connection,
+        and displays the response in a formatted panel. Supports both direct
+        connections and proxy tunneling with TLS support.
+        
+        Args:
+            host (str): Host to connect to (proxy host if via_proxy=True)
+            port (int): Port to connect to
+            target_host (str): Target host for the actual request
+            request_data (str): Raw HTTP request string
+            is_tls (bool): Whether to use TLS encryption
+            via_proxy (bool): Whether to route through a proxy
+            
+        Returns:
+            bytes or str: Raw HTTP response or error message
+        """
         bytes_request=request_data.encode('utf-8')
         # Validate the HTTP request and report issues before sending
         valid, report = analyze_http_request_text(request_data)
         if not valid:
             issues = report.get('issues', [])
-            reason = "\n".join([f"- {msg}" for msg in issues]) if issues else "- Unknown validation error"
+            reason = "\n".join(
+                [f"- {msg}" for msg in issues]) if issues else "- Unknown validation error"
             error_message = (
                 "Invalid HTTP request. The following issues were found:\n"
                 f"{reason}\n\n--- Raw Request ---\n{request_data}"
@@ -52,7 +83,7 @@ class Requester:
             via_proxy=via_proxy,
             ssl_context=self.ssl_context,
         )
-        
+
         # Decode and format the response for readability in a panel
         if isinstance(response, bytes):
             try:
@@ -66,7 +97,8 @@ class Requester:
                 console_printer.print(response_panel)
             except Exception as e:
                 error_panel = Panel(
-                    f"[red]Error decoding response: {e}[/red]\n\n[yellow]Raw response (first 200 chars):[/yellow]\n{str(response)[:200]}",
+                    f"[red]Error decoding response: {e}[/red]\n\n \
+                    [yellow]Raw response (first 200 chars):[/yellow]\n{str(response)[:200]}",
                     title="[bold red]Decode Error[/bold red]",
                     border_style="red",
                     box=box.ROUNDED
@@ -81,14 +113,30 @@ class Requester:
             )
             console_printer.print(response_panel)
         return response
-        # else: 
-        #     # TODO: a better error handling must be done here to return why the request is malformed.
-        #     return "Malformed HTTP request. Something is wrong with the request data, retry with another one."
 
 
 def parse_http_request(raw_data):
+    """
+    Parse raw HTTP request data into structured components.
+    
+    Uses httptools to parse HTTP request bytes into URL, headers, body,
+    and method components. Validates the request structure and completeness.
+    
+    Args:
+        raw_data (bytes): Raw HTTP request bytes
+        
+    Returns:
+        RequestParser or None: Parsed request object if valid, None if invalid
+    """
     class RequestParser:
+        """
+        Internal parser class for HTTP request components.
+        
+        Handles parsing of HTTP request components including URL, headers,
+        body, and completion status using httptools callbacks.
+        """
         def __init__(self):
+            """Initialize empty parser state."""
             self.url = None
             self.headers = {}
             self.body = b''
@@ -96,22 +144,34 @@ def parse_http_request(raw_data):
             self.method = None
 
         def on_url(self, url):
+            """Callback for URL parsing."""
             self.url = url.decode('utf-8')
 
         def on_header(self, name, value):
+            """Callback for header parsing."""
             self.headers[name.decode('utf-8').lower()] = value.decode('utf-8')
 
         def on_body(self, body):
+            """Callback for body parsing."""
             self.body += body
 
         def on_message_complete(self):
+            """Callback for request completion."""
             self.complete = True
 
     def _is_valid_request(parser):
         """
-        this function validates an HTTP request. 
-        it checks if the request we are about to send will be
-        sent with the right data. 
+        Validate parsed HTTP request structure.
+        
+        Checks if the parsed request has required components like URL path,
+        Host header, and proper Content-Length/Transfer-Encoding usage.
+        Validates that POST/PUT/PATCH methods have appropriate body content.
+        
+        Args:
+            parser (RequestParser): Parsed request object to validate
+            
+        Returns:
+            bool: True if request is valid, False otherwise
         """
 
         if not parser.url or not parser.url.startswith('/'):
@@ -212,8 +272,17 @@ def analyze_http_request_text(raw_request_text: str) -> tuple[bool, dict]:
 
 def _proxy_connect_tunnel(sock: socket.socket, target_host: str) -> bytes | None:
     """
-    Open a CONNECT tunnel to target_host (host:port) via an existing proxy TCP socket.
-    Returns the proxy response bytes (headers) if non-200, otherwise None when tunnel established.
+    Establish a CONNECT tunnel through a proxy to the target host.
+    
+    Sends a CONNECT request to establish a tunnel through an HTTP proxy
+    to the target host. Used for HTTPS requests through proxies.
+    
+    Args:
+        sock (socket.socket): Connected socket to the proxy
+        target_host (str): Target host in format "host:port"
+        
+    Returns:
+        bytes | None: Proxy response bytes if non-200 status, None if tunnel established
     """
     def _recv_headers(s: socket.socket) -> bytes:
         chunks = []
@@ -241,9 +310,23 @@ def _proxy_connect_tunnel(sock: socket.socket, target_host: str) -> bytes | None
 
 def _attempt_tls_handshake(sock: socket.socket, server_name: str, *, verify: bool) -> tuple[bool, bool, bool, str | None, ssl.SSLSocket | None]:
     """
-    Try a TLS handshake on the given TCP socket. Returns tuple:
-    (tls_supported, verification_ok, client_cert_required, error_message, tls_socket)
-    If handshake succeeds, tls_socket is returned; otherwise None.
+    Attempt TLS handshake on a TCP socket.
+    
+    Performs TLS handshake with optional certificate verification.
+    Detects various TLS-related errors and categorizes them appropriately.
+    
+    Args:
+        sock (socket.socket): Connected TCP socket
+        server_name (str): Server hostname for SNI
+        verify (bool): Whether to verify SSL certificates
+        
+    Returns:
+        tuple: (tls_supported, verification_ok, client_cert_required, error_message, tls_socket)
+            - tls_supported: Whether TLS is supported by the server
+            - verification_ok: Whether certificate verification passed
+            - client_cert_required: Whether server requires client certificate
+            - error_message: Error message if handshake failed
+            - tls_socket: SSL socket if handshake succeeded, None otherwise
     """
     try:
         if verify:
@@ -276,8 +359,25 @@ def _attempt_tls_handshake(sock: socket.socket, server_name: str, *, verify: boo
 
 def detect_tls_support(host: str, port: int, *, via_proxy: bool, proxy_addr: tuple[str, int] | None = None, timeout: float = 5.0) -> dict:
     """
-    Probe if the target supports TLS, whether verification passes, and if a client certificate is required.
-    Returns dict: { 'is_tls': bool, 'verification_ok': bool | None, 'client_cert_required': bool | None, 'error': str | None }
+    Detect TLS support and certificate requirements for a target host.
+    
+    Probes the target host to determine TLS support, certificate verification
+    status, and whether client certificates are required. Handles both direct
+    connections and proxy-tunneled connections.
+    
+    Args:
+        host (str): Target hostname or IP address
+        port (int): Target port number
+        via_proxy (bool): Whether to connect through a proxy
+        proxy_addr (tuple[str, int] | None): Proxy address (host, port) if via_proxy=True
+        timeout (float): Connection timeout in seconds
+        
+    Returns:
+        dict: Detection results with keys:
+            - 'is_tls': Whether TLS is supported
+            - 'verification_ok': Whether certificate verification passes
+            - 'client_cert_required': Whether client certificate is required
+            - 'error': Error message if connection failed
     """
     # Validate inputs
     if not host or not isinstance(host, str):
@@ -384,7 +484,24 @@ def detect_tls_support(host: str, port: int, *, via_proxy: bool, proxy_addr: tup
 
 
 def send_raw_request(host, port, target_host, request, is_tls=False, via_proxy=False, ssl_context: ssl.SSLContext | None = None):
-    """Send raw request to the target"""
+    """
+    Send raw HTTP request via socket connection.
+    
+    Establishes a socket connection (direct or via proxy), optionally upgrades
+    to TLS, sends the raw HTTP request, and returns the complete response.
+    
+    Args:
+        host (str): Host to connect to
+        port (int): Port to connect to
+        target_host (str): Target host for the request
+        request (bytes): Raw HTTP request bytes
+        is_tls (bool): Whether to use TLS encryption
+        via_proxy (bool): Whether to route through proxy
+        ssl_context (ssl.SSLContext | None): SSL context for TLS connections
+        
+    Returns:
+        bytes: Raw HTTP response or error message
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(5.0)
 
@@ -447,8 +564,17 @@ def send_raw_request(host, port, target_host, request, is_tls=False, via_proxy=F
 
 def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:
     """
-    Backwards-compatible boolean validity check.
-    Use `is_valid_request_detailed` for a full report.
+    Check if raw HTTP request string is valid.
+    
+    Simple boolean validation check for backwards compatibility.
+    Use is_valid_request_detailed() for comprehensive validation report.
+    
+    Args:
+        ctx (RunContext[str]): Pydantic AI run context
+        raw_request (str): Raw HTTP request string to validate
+        
+    Returns:
+        bool: True if request is valid, False otherwise
     """
     valid, _report = analyze_http_request_text(raw_request)
     return bool(valid)
@@ -456,16 +582,23 @@ def is_valid_request(ctx: RunContext[str], raw_request: str) -> bool:
 
 def is_valid_request_detailed(ctx: RunContext[str], raw_request: str) -> dict:
     """
-    Return a detailed validation report for the raw HTTP request.
-    Schema:
-    { 
-      'is_valid': bool, 
-      'issues': [str], 
-      'method': str|None, 
-      'url': str|None, 
-      'headers': dict, 
-      'raw_request': str
-    }
+    Generate detailed validation report for HTTP request.
+    
+    Provides comprehensive validation including parsed components,
+    identified issues, and structured metadata about the request.
+    
+    Args:
+        ctx (RunContext[str]): Pydantic AI run context
+        raw_request (str): Raw HTTP request string to validate
+        
+    Returns:
+        dict: Detailed validation report with keys:
+            - 'is_valid': Boolean validity status
+            - 'issues': List of validation issues found
+            - 'method': HTTP method (if parseable)
+            - 'url': Request URL path (if parseable)
+            - 'headers': Parsed headers dictionary
+            - 'raw_request': Original request string
     """
     valid, report = analyze_http_request_text(raw_request)
     return {
@@ -483,7 +616,22 @@ async def send_payload(
     raw_request:str,
     proxy: bool
     ) -> str | bytes:
-    """Tool to send requests in raw"""
+    """
+    Send HTTP payload to target host with automatic TLS detection.
+    
+    High-level function for sending raw HTTP requests with automatic
+    TLS detection and proxy support. Parses target host, detects TLS
+    capabilities, and routes through proxy if requested.
+    
+    Args:
+        ctx (RunContext[str]): Pydantic AI run context
+        target_host (str): Target host in format "host:port" or URL
+        raw_request (str): Raw HTTP request string
+        proxy (bool): Whether to route through localhost:8080 proxy
+        
+    Returns:
+        str | bytes: HTTP response or error message
+    """
     requester = Requester(verify_ssl=False)
     def _parse_target(th: str):
         parts = th.split(":")
