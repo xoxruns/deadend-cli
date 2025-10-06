@@ -57,15 +57,15 @@ class PlaywrightRequester:
         browser_options = {
             'headless': True,
         }
-        
+
         self.browser = await self.playwright.chromium.launch(**browser_options)
-        
+
         # Configure browser context options
         context_options = {
             'ignore_https_errors': not self.verify_ssl,
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         }
-        
+
         if self.proxy_url:
             context_options['proxy'] = {'server': self.proxy_url}
 
