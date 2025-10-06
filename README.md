@@ -161,6 +161,52 @@ This approach enables discovery of vulnerabilities that traditional scanners oft
 - **Resource Isolation**: Complete isolation from host system
 - **Tool Chain Integration**: Seamless integration with popular pentesting tools
 
+## Installation 
+
+### Prerequisites
+
+**Docker is required** - The application uses Docker to run the pgvector database and other services. Make sure Docker is installed and running before proceeding.
+
+Install Docker from: https://docs.docker.com/get-docker/
+
+**Playwright is required** - The agent also uses playwright for browser interactions. To install, run the following commands :
+```bash
+# https://playwright.dev/python/docs/intro
+pip install pytest-playwright
+# or 
+pipx install pytest-playwright
+
+# followed by :
+playwright install
+```
+
+The latter should download the headless browsers needed for the functioning of the app.
+
+### Install with pipx (Recommended)
+
+The `deadend-cli` is available on PyPI and can be installed using pipx:
+
+```bash
+# Install pipx if you don't have it
+# --> https://github.com/pypa/pipx
+
+# Install deadend-cli
+pipx install deadend-cli 
+```
+
+### Build from source 
+
+Clone the repository and build using `uv`:
+
+```bash
+git clone https://github.com/gemini-15/deadend-cli.git
+cd deadend-cli
+
+# Install dependencies and build
+uv sync 
+uv build
+```
+
 ## How to use
 
 The Deadend CLI provides an interactive chat interface and specialized agents for security testing.
@@ -343,38 +389,7 @@ After initialization, you can use the other CLI commands for security testing.
 - **Resource Isolation**: Complete isolation from host system
 - **Tool Containers**: Pre-configured security tools in containers
 
-## Installation 
 
-### Prerequisites
-
-**Docker is required** - The application uses Docker to run the pgvector database and other services. Make sure Docker is installed and running before proceeding.
-
-Install Docker from: https://docs.docker.com/get-docker/
-
-### Install with pipx (Recommended)
-
-The `deadend-cli` is available on PyPI and can be installed using pipx:
-
-```bash
-# Install pipx if you don't have it
-# --> https://github.com/pypa/pipx
-
-# Install deadend-cli
-pipx install deadend-cli 
-```
-
-### Build from source 
-
-Clone the repository and build using `uv`:
-
-```bash
-git clone https://github.com/gemini-15/deadend-cli.git
-cd deadend-cli
-
-# Install dependencies and build
-uv sync 
-uv build
-```
 
 ## Usage 
 
