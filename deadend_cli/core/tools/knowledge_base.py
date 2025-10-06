@@ -12,7 +12,6 @@ documentation, and best practices for security assessments.
 from pydantic_ai import RunContext
 from deadend_cli.core.utils.structures import RagDeps
 
-
 async def knowledge_rag(
         context: RunContext[RagDeps],
         search_query: str
@@ -31,7 +30,7 @@ async def knowledge_rag(
         query_embedding=embedding, 
         limit=10
     )
-    for chunk, similarity in results: 
+    for chunk, similarity in results:
         res = res + '\n' + chunk.content
     
     return res

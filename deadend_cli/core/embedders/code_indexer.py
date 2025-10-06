@@ -52,6 +52,16 @@ class SourceCodeIndexer:
 
 
     async def crawl_target(self):
+        """
+        Crawl the target website and extract all web resources.
+        
+        This method uses the WebResourceExtractor to crawl the target URL,
+        downloading HTML, JavaScript, CSS, and other web resources to the
+        session-specific cache directory.
+        
+        Returns:
+            dict: Dictionary containing information about extracted resources
+        """
         self.resources = await self.crawler.extract_all_resources(
             url=self.target,
             wait_time=3,
@@ -62,20 +72,46 @@ class SourceCodeIndexer:
         return self.resources
 
     def _add_session_to_cache(self):
+        """
+        Create cache directory structure for the current session.
+        
+        Sets up the cache directory under ~/.cache/deadend/webpages/ and
+        creates a session-specific subdirectory for storing downloaded resources.
+        """
         home_dir = Path.home()
         self.cache_path = home_dir.joinpath('.cache/deadend/webpages/')
         if not os.path.exists(self.cache_path):
             Path(self.cache_path).mkdir(parents=True, exist_ok=True)
-        
+
         self.source_code_path = self.cache_path.joinpath(str(self.session_id))
         Path(self.source_code_path).mkdir(parents=True, exist_ok=True)
         
     def _add_chunk_directory(self):
+        """
+        Create directory for storing code chunks.
+        
+        Sets up a _chunks subdirectory within the session cache directory
+        for storing processed code chunks during the embedding process.
+        """
         self.chunk_folder = "_chunks"
         self.chunk_path = self.source_code_path.joinpath(self.chunk_folder)
         self.chunk_path.mkdir(parents=True, exist_ok=True)
     
     async def serialized_embedded_code(self, openai_api_key: str, embedding_model: str):
+        """
+        Generate serialized embedded code chunks for database storage.
+        
+        Processes all webpage code through embedding and returns a list of
+        dictionaries containing session metadata, file paths, language info,
+        code content, and embeddings for database persistence.
+        
+        Args:
+            openai_api_key (str): OpenAI API key for embedding generation
+            embedding_model (str): Name of the embedding model to use
+            
+        Returns:
+            List[dict]: List of code chunk dictionaries ready for database storage
+        """
         code_sections = await self.embed_webpage(
             openai_api_key=openai_api_key,
             embedding_model=embedding_model
@@ -93,7 +129,18 @@ class SourceCodeIndexer:
         return code_chunks
     async def embed_webpage(self, openai_api_key: str, embedding_model: str) -> List[CodeSection]:
         """
-        Chunk every JS and HTML file found in the session directory
+        Process and embed all JavaScript and HTML files from the crawled webpage.
+        
+        Walks through the session directory, identifies JavaScript (.js, .jsx) and
+        HTML files, chunks them into manageable pieces, and generates embeddings
+        using the specified OpenAI model. Vendor-specific files are filtered out.
+        
+        Args:
+            openai_api_key (str): OpenAI API key for embedding generation
+            embedding_model (str): Name of the embedding model to use
+            
+        Returns:
+            List[CodeSection]: List of embedded code sections ready for RAG queries
         """
         openai = AsyncOpenAI(api_key=openai_api_key)
         files_ignored = []
@@ -103,29 +150,39 @@ class SourceCodeIndexer:
             for file in files:
                 if not self.is_file_vendor_specific(file):
                     if file.endswith(".js") or file.endswith(".jsx"):
-                        code_chunker = Chunker('/'.join([subdir, file]), 'javascript', True, tiktoken_model='gpt-4o-mini')
+                        code_chunker = Chunker(
+                            '/'.join([subdir, file]),
+                            'javascript',
+                            True,
+                            tiktoken_model='gpt-4o-mini'
+                        )
                         file_chunks = code_chunker.chunk_file(2000)
                         url_path = subdir.replace(str(self.source_code_path), "")
                         if file_chunks is not None:
                             new_cs = await self._embed_chunks(
                                 openai=openai,
-                                embedding_model=embedding_model, 
-                                url_path=url_path, 
-                                title=file, 
+                                embedding_model=embedding_model,
+                                url_path=url_path,
+                                title=file,
                                 chunks=file_chunks
                             )
                             code_sections.extend(new_cs)
-    
+
                     elif file.endswith("html"):
-                        code_chunker = Chunker('/'.join([subdir, file]), 'html', True, tiktoken_model='gpt-4o-mini')
+                        code_chunker = Chunker(
+                            '/'.join([subdir, file]),
+                            'html',
+                            True,
+                            tiktoken_model='gpt-4o-mini'
+                        )
                         file_chunks = code_chunker.chunk_file(2000)
                         url_path = subdir.replace(str(self.source_code_path), "")
                         if file_chunks is not None:
                             new_cs = await self._embed_chunks(
                                 openai=openai,
-                                embedding_model=embedding_model, 
-                                url_path=url_path, 
-                                title=file, 
+                                embedding_model=embedding_model,
+                                url_path=url_path,
+                                title=file,
                                 chunks=file_chunks
                             )
                             code_sections.extend(new_cs)
@@ -134,29 +191,70 @@ class SourceCodeIndexer:
         return code_sections
 
     async def _embed_chunks(self, openai: AsyncOpenAI, embedding_model: str, url_path: str, title: str, chunks: List[str]) -> List[CodeSection]:
+        """
+        Generate embeddings for a list of code chunks.
+        
+        Takes raw code chunks, normalizes whitespace, creates CodeSection objects,
+        and generates embeddings using the OpenAI API. Only successfully embedded
+        chunks are returned.
+        
+        Args:
+            openai (AsyncOpenAI): Configured OpenAI client instance
+            embedding_model (str): Name of the embedding model to use
+            url_path (str): URL path where the file was found
+            title (str): Filename or title for the code section
+            chunks (List[str]): List of code chunks to embed
+            
+        Returns:
+            List[CodeSection]: List of successfully embedded code sections
+        """
         code_sections = []
-        for chunk_number in range(0, len(chunks)):
-            new_chunk = " ".join(chunks[chunk_number].split("\n"))
+        for chunk_number, chunk in enumerate(chunks):
+            new_chunk = " ".join(chunk.split("\n"))
             code_section = CodeSection(
-                url_path=url_path, 
+                url_path=url_path,
                 title=title,
                 content={chunk_number : new_chunk},
                 embeddings=None
             )
             await code_section.embed_content(openai=openai, embedding_model=embedding_model)
             if code_section.embeddings is not None:
-                code_sections.append(code_section)   
-        
+                code_sections.append(code_section)
         return code_sections
-    
+
     def _load_patterns(self):
+        """
+        Load vendor-specific file patterns for filtering.
+        
+        Reads the vendor_specific_files.json file to load patterns used for
+        identifying and filtering out vendor-specific files (like jQuery, Bootstrap)
+        that should not be indexed for security analysis.
+        """
         import json
-        with open("./vendor_specific_files.json") as f: 
+        import importlib.resources
+
+        # Get the path to the data file within the package
+        data_file = importlib.resources.files('deadend_cli').joinpath('data/vendor_specific_files.json')
+
+        with open(data_file, encoding="utf-8") as f:
             patterns_json = f.read()
 
         self.forbidden_patterns = json.loads(patterns_json)
 
     def is_file_vendor_specific(self, filename: str):
+        """
+        Check if a filename matches vendor-specific patterns.
+        
+        Uses regex patterns loaded from vendor_specific_files.json to determine
+        if a file should be excluded from indexing because it's a known vendor
+        library (jQuery, Bootstrap, etc.) rather than application-specific code.
+        
+        Args:
+            filename (str): The filename to check
+            
+        Returns:
+            bool: True if the file matches vendor patterns and should be excluded
+        """
         common_patterns = self.forbidden_patterns["generic"]
         triggered_patterns = []
         for pattern in common_patterns:

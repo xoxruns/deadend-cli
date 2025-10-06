@@ -17,6 +17,7 @@ from deadend_cli.core.tools import (
     sandboxed_shell_tool, 
     is_valid_request, 
     send_payload, 
+    send_payload_with_playwright,
     webapp_code_rag
 )
 from deadend_cli.core.agents.factory import AgentRunner
@@ -60,7 +61,7 @@ class WebappReconAgent(AgentRunner):
             output_type=[RequesterOutput, DeferredToolRequests],
             tools=[
                 Tool(is_valid_request),
-                Tool(send_payload, requires_approval=requires_approval),
+                Tool(send_payload_with_playwright, requires_approval=requires_approval),
                 # Tool(sandboxed_shell_tool),
                 Tool(webapp_code_rag)
             ]
