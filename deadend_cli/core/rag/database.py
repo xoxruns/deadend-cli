@@ -26,6 +26,19 @@ from typing_extensions import AsyncGenerator
 async def database_connect(
     create_db: bool = False
 ) -> AsyncGenerator[asyncpg.Pool, None]:
+    """Create and manage database connection pool.
+    
+    Args:
+        create_db: If True, creates the database if it doesn't exist.
+        
+    Yields:
+        asyncpg.Pool: Database connection pool.
+        
+    Example:
+        >>> async with database_connect() as pool:
+        ...     async with pool.acquire() as conn:
+        ...         result = await conn.fetchval("SELECT 1")
+    """
     server_dsn, database = (
         'postgresql://postgres:postgres@localhost:54320',
         'code_indexer_db',
@@ -47,22 +60,56 @@ async def database_connect(
     finally:
         await pool.close()
 
-@dataclass 
+@dataclass
 class RagDeps:
+    """Dependencies for RAG (Retrieval-Augmented Generation) operations.
+    
+    Attributes:
+        openai: OpenAI client for embedding generation.
+        pool: Database connection pool for data storage and retrieval.
+    """
     openai: AsyncOpenAI
     pool: asyncpg.Pool
 
-@dataclass 
+@dataclass
 class CodeSection:
+    """Represents a code section with metadata and embeddings.
+    
+    Attributes:
+        url_path: URL or file path where the code section is located.
+        title: Descriptive title for the code section.
+        content: Dictionary containing the actual code content.
+        embeddings: Vector embeddings for semantic search (1536 dimensions).
+    """
     url_path: str
     title: str
-    content: dict[str, str] | None 
+    content: dict[str, str] | None
     embeddings: List[Float] | None
 
     def _embedding_content(self) -> str:
-        return '\n\n'.join((f'url_path: {self.url_path}', f'title: {self.title}', str(self.content)))
+        """Format content for embedding generation.
+        
+        Combines url_path, title, and content into a single string
+        suitable for embedding generation.
+        
+        Returns:
+            Formatted string containing all relevant information.
+        """
+        return '\n\n'.join(
+            (f'url_path: {self.url_path}', f'title: {self.title}', str(self.content))
+        )
 
     async def embed_content(self, openai: AsyncOpenAI, embedding_model: str):
+        """Generate embeddings for the code section content.
+        
+        Args:
+            openai: OpenAI client instance for embedding generation.
+            embedding_model: Name of the embedding model to use.
+            
+        Note:
+            If embedding generation fails, embeddings will be set to None.
+            The method handles BadRequestError exceptions gracefully.
+        """
         try:
             response = await openai.embeddings.create(
                 input=str(self.content),
@@ -92,6 +139,11 @@ CREATE INDEX IF NOT EXISTS idx_code_sections_embedding ON code_sections USING hn
 
 
 async def create_db():
+    """Create database schema and tables.
+    
+    Creates the code_indexer_db database if it doesn't exist and sets up
+    the required tables including the vector extension for embeddings.
+    """
     async with database_connect(True) as pool:
         async with pool.acquire() as conn:
             async with conn.transaction():
@@ -105,12 +157,31 @@ async def insert_code_section(
     pool: asyncpg.Pool, 
     code_section: CodeSection
 ):
+    """Insert a code section into the database.
+    
+    Args:
+        sem: Semaphore to limit concurrent database operations.
+        openai: OpenAI client for embedding generation.
+        pool: Database connection pool.
+        code_section: Code section to insert.
+        
+    Note:
+        This function is currently incomplete and needs implementation.
+    """
     async with sem: 
         # Checking if the code section exists
         exists = await pool.fetchval("SELECT content from ")
 
 async def insert_file_chunks():
-    pass
+    """Insert file chunks into the database.
+    
+    Note:
+        This function is a placeholder and needs implementation.
+    """
 
 async def search():
-    pass
+    """Search for code sections using semantic similarity.
+    
+    Note:
+        This function is a placeholder and needs implementation.
+    """

@@ -3,13 +3,59 @@
 # See LICENSE file for full license information.
 
 """Playwright-based HTTP request handler with enhanced session management and redirect handling."""
-
+import asyncio
 from typing import Dict, Any, Optional, Union, Tuple
 from playwright.async_api import async_playwright
 from rich.panel import Panel
 from rich import box
 from deadend_cli.cli.console import console_printer
 from deadend_cli.core.tools.requester import analyze_http_request_text
+
+class PlaywrightSessionManager:
+    """
+    Singleton session manager to maintain PlaywrightRequester instances across tool calls.
+    
+    This ensures that cookies and session data persist between multiple requests
+    within the same application session.
+    """
+    _instances: Dict[str, 'PlaywrightRequester'] = {}
+    _lock = asyncio.Lock()
+
+    @classmethod
+    async def get_session(cls, session_key: str, verify_ssl: bool = True, proxy_url: Optional[str] = None) -> 'PlaywrightRequester':
+        """
+        Get or create a PlaywrightRequester session.
+        
+        Args:
+            session_key (str): Unique key for the session (e.g., target host)
+            verify_ssl (bool): Whether to verify SSL certificates
+            proxy_url (str, optional): Proxy URL for requests
+            
+        Returns:
+            PlaywrightRequester: Session instance
+        """
+        async with cls._lock:
+            if session_key not in cls._instances:
+                cls._instances[session_key] = PlaywrightRequester(verify_ssl, proxy_url)
+                await cls._instances[session_key]._initialize()
+            
+            return cls._instances[session_key]
+
+    @classmethod
+    async def cleanup_session(cls, session_key: str):
+        """Clean up a specific session."""
+        async with cls._lock:
+            if session_key in cls._instances:
+                await cls._instances[session_key]._cleanup()
+                del cls._instances[session_key]
+
+    @classmethod
+    async def cleanup_all_sessions(cls):
+        """Clean up all sessions."""
+        async with cls._lock:
+            for session_key in list(cls._instances.keys()):
+                await cls._instances[session_key]._cleanup()
+            cls._instances.clear()
 
 
 class PlaywrightRequester:
@@ -52,7 +98,7 @@ class PlaywrightRequester:
             return
 
         self.playwright = await async_playwright().start()
-        
+
         # Configure browser launch options
         browser_options = {
             'headless': True,
@@ -83,8 +129,8 @@ class PlaywrightRequester:
             await self.playwright.stop()
         self._initialized = False
 
-    async def send_raw_data(self, host: str, port: int, target_host: str, 
-                          request_data: str, is_tls: bool = False, 
+    async def send_raw_data(self, host: str, port: int, target_host: str,
+                          request_data: str, is_tls: bool = False,
                           via_proxy: bool = False) -> Union[str, bytes]:
         """
         Send raw HTTP request data to a target host.
@@ -350,10 +396,11 @@ async def send_payload_with_playwright(
     verify_ssl: bool = False
 ) -> Union[str, bytes]:
     """
-    Send HTTP payload using Playwright with enhanced capabilities.
+    Send HTTP payload using Playwright with enhanced capabilities and session persistence.
     
     This function provides the same interface as the original send_payload()
-    but uses Playwright for improved functionality.
+    but uses Playwright for improved functionality with persistent sessions
+    that maintain cookies between requests.
     
     Args:
         target_host (str): Target host in format "host:port" or URL
@@ -397,14 +444,67 @@ async def send_payload_with_playwright(
     is_tls = port == 443 or target_host.startswith('https://')
     proxy_url = "http://localhost:8080" if proxy else None
 
-    async with PlaywrightRequester(verify_ssl=verify_ssl, proxy_url=proxy_url) as playwright_req:
-        response = await playwright_req.send_raw_data(
-            host=host,
-            port=port,
-            target_host=target_host,
-            request_data=raw_request,
-            is_tls=is_tls,
-            via_proxy=proxy
-        )
+    # Create a session key based on target host and proxy settings
+    session_key = f"{host}:{port}:{proxy}:{verify_ssl}"
+    
+    # Get or create a persistent session
+    playwright_req = await PlaywrightSessionManager.get_session(
+        session_key=session_key,
+        verify_ssl=verify_ssl,
+        proxy_url=proxy_url
+    )
+    
+    response = await playwright_req.send_raw_data(
+        host=host,
+        port=port,
+        target_host=target_host,
+        request_data=raw_request,
+        is_tls=is_tls,
+        via_proxy=proxy
+    )
 
-        return response
+    return response
+
+
+async def cleanup_playwright_sessions():
+    """
+    Clean up all Playwright sessions.
+    
+    This function should be called when the application exits or when
+    you want to clear all session data (cookies, etc.).
+    """
+    await PlaywrightSessionManager.cleanup_all_sessions()
+
+
+async def cleanup_playwright_session_for_target(target_host: str, proxy: bool = False, verify_ssl: bool = False):
+    """
+    Clean up a specific Playwright session for a target.
+    
+    Args:
+        target_host (str): Target host to clean up session for
+        proxy (bool): Whether proxy was used
+        verify_ssl (bool): Whether SSL verification was used
+    """
+    def _parse_target(th: str) -> Tuple[str, int]:
+        """Parse target host string into host and port."""
+        if th.startswith("http://"):
+            th = th[7:]
+        elif th.startswith("https://"):
+            th = th[8:]
+        
+        parts = th.split(":")
+        if len(parts) >= 2:
+            try:
+                port_int = int(parts[-1])
+                host = ":".join(parts[:-1])
+                return host, port_int
+            except ValueError:
+                host = th
+                return host, 80
+        else:
+            host = th
+            return host, 80
+
+    host, port = _parse_target(target_host)
+    session_key = f"{host}:{port}:{proxy}:{verify_ssl}"
+    await PlaywrightSessionManager.cleanup_session(session_key)
