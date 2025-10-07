@@ -20,7 +20,7 @@ class PlaywrightRequester:
     but with additional capabilities including automatic redirect handling,
     session management, cookie persistence, and improved error handling.
     """
-    
+
     def __init__(self, verify_ssl: bool = True, proxy_url: Optional[str] = None):
         """
         Initialize the PlaywrightRequester.
@@ -36,16 +36,16 @@ class PlaywrightRequester:
         self.context = None
         self.request_context = None
         self._initialized = False
-    
+
     async def __aenter__(self):
         """Async context manager entry."""
         await self._initialize()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self._cleanup()
-    
+
     async def _initialize(self):
         """Initialize Playwright browser and context."""
         if self._initialized:
@@ -366,30 +366,35 @@ async def send_payload_with_playwright(
     """
     def _parse_target(th: str) -> Tuple[str, int]:
         """Parse target host string into host and port."""
+        # Remove protocol prefix first
+        if th.startswith("http://"):
+            th = th[7:]
+            default_port = 80
+        elif th.startswith("https://"):
+            th = th[8:]
+            default_port = 443
+        else:
+            default_port = 80
+
         parts = th.split(":")
         if len(parts) >= 2:
-            host = ":".join(parts[:-1])
-            port = parts[-1]
+            # Check if the last part is actually a port number
+            try:
+                port_int = int(parts[-1])
+                host = ":".join(parts[:-1])
+                return host, port_int
+            except ValueError:
+                # Last part is not a number, so no port specified
+                host = th
+                return host, default_port
         else:
-            host, port = th, "80"
-
-        if host.startswith("http://"):
-            host = host[7:]
-        elif host.startswith("https://"):
-            host = host[8:]
-
-        try:
-            port_int = int(port)
-        except ValueError:
-            port_int = 80
-
-        return host, port_int
+            host = th
+            return host, default_port
 
     host, port = _parse_target(target_host)
 
     # Determine if we should use TLS (simplified detection)
     is_tls = port == 443 or target_host.startswith('https://')
-
     proxy_url = "http://localhost:8080" if proxy else None
 
     async with PlaywrightRequester(verify_ssl=verify_ssl, proxy_url=proxy_url) as playwright_req:

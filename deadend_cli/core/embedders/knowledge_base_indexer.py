@@ -10,7 +10,7 @@ documentation, and best practices for AI agent assistance.
 """
 
 import os
-from typing import List 
+from typing import List
 from openai import AsyncOpenAI, BadRequestError
 from dataclasses import dataclass
 

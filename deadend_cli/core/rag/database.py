@@ -8,13 +8,12 @@ This module provides database connectivity, schema management, and data
 processing utilities for storing and retrieving security research data,
 including code sections, embeddings, and analysis results.
 """
-
-import asyncio
-import asyncpg
 from typing import List
-from openai import AsyncOpenAI, BadRequestError
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
+import asyncio
+import asyncpg
+from openai import AsyncOpenAI, BadRequestError
 from rich.pretty import pprint
 from sqlalchemy import Float
 from typing_extensions import AsyncGenerator
@@ -66,7 +65,7 @@ class CodeSection:
     async def embed_content(self, openai: AsyncOpenAI, embedding_model: str):
         try:
             response = await openai.embeddings.create(
-                input=str(self.content), 
+                input=str(self.content),
                 model=embedding_model
             )
             assert len(response.data) == 1, (
