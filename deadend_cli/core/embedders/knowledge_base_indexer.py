@@ -15,6 +15,7 @@ from openai import AsyncOpenAI, BadRequestError
 from dataclasses import dataclass
 
 from deadend_cli.core.code_indexer.code_splitter import Chunker
+from deadend_cli.core.embedders.embedders import batch_embed_chunks
 
 @dataclass
 class DocumentSection:
@@ -31,18 +32,21 @@ class DocumentSection:
     content: dict[str, str] | None
     embeddings: List[float] | None
 
-    def _embedding_content(self) -> str:
-        """Format the document content for embedding generation.
+    def get_embedding_content(self) -> str:
+        """Get content formatted for embedding generation.
+        
+        This method implements the Embeddable protocol by providing
+        a standardized way to get embedding content.
         
         Returns:
-            Formatted string containing document path, title, and content
+            Formatted string suitable for embedding generation.
         """
         return '\n\n'.join([
             f"document_path: {self.document_path}",
             f"title: {self.title}",
             f"{str(self.content)}"
         ])
-    
+
     async def embed_content(
             self,
             openai: AsyncOpenAI,
@@ -57,9 +61,9 @@ class DocumentSection:
         Raises:
             BadRequestError: If the API request fails
         """
-        try: 
+        try:
             response = await openai.embeddings.create(
-                input=self._embedding_content(),
+                input=self.get_embedding_content(),
                 model=embedding_model
             )
             assert len(response.data) == 1, (
@@ -161,7 +165,7 @@ class KnowledgeBaseIndexer:
             document_title: str, 
             chunks: List[str]
             ):
-        """Process document chunks and generate embeddings for each chunk.
+        """Process document chunks and generate embeddings using the generic batch embedding function.
         
         Args:
             openai: AsyncOpenAI client instance
@@ -173,20 +177,25 @@ class KnowledgeBaseIndexer:
         Returns:
             List of DocumentSection objects with embeddings
         """
+        if not chunks:
+            return []
+        
+        # Create DocumentSection objects for all chunks
         doc_sections = []
-        for chunk_idx in enumerate(chunks):
-            new_chunk = " ".join(chunks[chunk_idx].split("\n"))
+        for chunk_idx, chunk in enumerate(chunks):
+            new_chunk = " ".join(chunk.split("\n"))
             doc_section = DocumentSection(
                 document_path=document_path,
                 title=document_title,
                 content={chunk_idx : new_chunk},
                 embeddings=None
             )
-            await doc_section.embed_content(
-                openai=openai,
-                embedding_model=embedding_model
-            )
-            if doc_section.embeddings is not None:
-                doc_sections.append(doc_section)
-        return doc_sections
+            doc_sections.append(doc_section)
 
+        # Use the generic batch embedding function
+        return await batch_embed_chunks(
+            openai=openai,
+            embedding_model=embedding_model,
+            embeddable_objects=doc_sections,
+            batch_name=f"{document_title} chunks"
+        )

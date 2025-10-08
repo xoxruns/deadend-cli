@@ -11,7 +11,6 @@ for security research and vulnerability identification.
 
 import os
 import re
-import asyncio
 from typing import List
 from openai import AsyncOpenAI
 import uuid
@@ -21,6 +20,7 @@ from pathlib import Path
 from deadend_cli.core.rag.database import CodeSection
 from deadend_cli.core.tools.web_resource_extractor import WebResourceExtractor
 from deadend_cli.core.code_indexer.code_splitter import Chunker
+from deadend_cli.core.embedders.embedders import batch_embed_chunks
 
 class SourceCodeIndexer:
     """
@@ -86,7 +86,7 @@ class SourceCodeIndexer:
 
         self.source_code_path = self.cache_path.joinpath(str(self.session_id))
         Path(self.source_code_path).mkdir(parents=True, exist_ok=True)
-        
+
     def _add_chunk_directory(self):
         """
         Create directory for storing code chunks.
@@ -97,7 +97,7 @@ class SourceCodeIndexer:
         self.chunk_folder = "_chunks"
         self.chunk_path = self.source_code_path.joinpath(self.chunk_folder)
         self.chunk_path.mkdir(parents=True, exist_ok=True)
-    
+
     async def serialized_embedded_code(self, openai_api_key: str, embedding_model: str):
         """
         Generate serialized embedded code chunks for database storage.
@@ -193,11 +193,10 @@ class SourceCodeIndexer:
 
     async def _embed_chunks(self, openai: AsyncOpenAI, embedding_model: str, url_path: str, title: str, chunks: List[str]) -> List[CodeSection]:
         """
-        Generate embeddings for a list of code chunks using batch API calls.
+        Generate embeddings for a list of code chunks using the generic batch embedding function.
         
         Takes raw code chunks, normalizes whitespace, creates CodeSection objects,
-        and generates embeddings using the OpenAI API in a single batch call for optimal performance.
-        Only successfully embedded chunks are returned.
+        and generates embeddings using the optimized batch embedding utility.
         
         Args:
             openai (AsyncOpenAI): Configured OpenAI client instance
@@ -214,7 +213,6 @@ class SourceCodeIndexer:
 
         # Create CodeSection objects for all chunks
         code_sections = []
-        chunk_texts = []
         for chunk_number, chunk in enumerate(chunks):
             new_chunk = " ".join(chunk.split("\n"))
             code_section = CodeSection(
@@ -224,32 +222,14 @@ class SourceCodeIndexer:
                 embeddings=None
             )
             code_sections.append(code_section)
-            chunk_texts.append(str(code_section.content))
-        try:
-            # Make a single batch API call for all chunks
-            response = await openai.embeddings.create(
-                input=chunk_texts,
-                model=embedding_model
-            )
-            for i, embedding_data in enumerate(response.data):
-                if i < len(code_sections):
-                    code_sections[i].embeddings = embedding_data.embedding
-            return code_sections
-
-        except Exception as e:
-            print(f"Batch embedding failed for {title}, falling back to individual calls: {e}")
-            # Create embedding tasks for all chunks in parallel as fallback
-            embedding_tasks = [
-                code_section.embed_content(openai=openai, embedding_model=embedding_model)
-                for code_section in code_sections
-            ]
-            await asyncio.gather(*embedding_tasks)
-            # Filter out chunks that failed to embed
-            successful_sections = [
-                code_section for code_section in code_sections
-                if code_section.embeddings is not None
-            ]
-            return successful_sections
+        
+        # Use the generic batch embedding function
+        return await batch_embed_chunks(
+            openai=openai,
+            embedding_model=embedding_model,
+            embeddable_objects=code_sections,
+            batch_name=f"{title} chunks"
+        )
 
     def _load_patterns(self):
         """

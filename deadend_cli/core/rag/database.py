@@ -86,14 +86,15 @@ class CodeSection:
     content: dict[str, str] | None
     embeddings: List[Float] | None
 
-    def _embedding_content(self) -> str:
-        """Format content for embedding generation.
+
+    def get_embedding_content(self) -> str:
+        """Get content formatted for embedding generation.
         
-        Combines url_path, title, and content into a single string
-        suitable for embedding generation.
+        This method implements the Embeddable protocol by providing
+        a standardized way to get embedding content.
         
         Returns:
-            Formatted string containing all relevant information.
+            Formatted string suitable for embedding generation.
         """
         return '\n\n'.join(
             (f'url_path: {self.url_path}', f'title: {self.title}', str(self.content))

@@ -11,16 +11,14 @@ in the security research framework's RAG system.
 
 import asyncio
 import uuid
-import numpy as np
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy import text, select
 from datetime import datetime
 from typing import List, Optional, Dict, Any, AsyncGenerator
 from contextlib import asynccontextmanager
+import numpy as np
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy import text, select
 
 from .models import Base, CodeChunk, KnowledgeBase
-
-
 
 class RetrievalDatabaseConnector:
     """
@@ -29,7 +27,7 @@ class RetrievalDatabaseConnector:
     def __init__(self, database_url: str, pool_size: int = 20, max_overflow: int = 30):
         if database_url.startswith("postgresql://"):
             database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        
+
         self.engine = create_async_engine(
             database_url,
             pool_size=pool_size,
@@ -43,7 +41,7 @@ class RetrievalDatabaseConnector:
             class_=AsyncSession,
             expire_on_commit=False
         )
-    
+
     async def initialize_database(self):
         """Initialize database tables and extensions."""
         async with self.engine.begin() as conn:
@@ -82,7 +80,7 @@ class RetrievalDatabaseConnector:
             await session.commit()
             await session.refresh(kb_chunk)
             return kb_chunk
-    
+
     async def batch_insert_kb_chunks(
         self,
         knowledge_chunks_data: List[Dict[str, Any]]
