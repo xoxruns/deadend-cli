@@ -7,6 +7,19 @@ The agentic AI architecture needs to run programs and code. But this needs to be
 > For simply running python code, for performance reasons, we decided to go with WebAssembly. 
 
 ## Shell 
+Packages installed : 
+- nmap 
+- nbtscan
+- crackmapexec
+- snmpwalk
+
+Web application security:
+- sqlmap
+- gobuster
+- ffuf
+- wpscan
+
+
 
 
 ## Python interpreter
@@ -15,6 +28,5 @@ The python interpreter is sandboxed using WebAssembly and pyodide. The python in
 - Run standalone python files (copied beforehand from filesystem)
 - Import previously specified packages 
 - Run python generated code as string
-
 
 

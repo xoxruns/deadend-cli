@@ -3,23 +3,23 @@
 layout: home
 
 hero:
-  name: "Deadend CLI"
-  text: "Security analysis tool using code indexing and Language Models"
-  tagline: My great project tagline
+  name: "Deadend"
+  text: "Agentic security testing framework"
+  tagline: Find vulns fast 🏎️💨 like a seasoned hacker
   actions:
     - theme: brand
       text: Get started
       link: /markdown-examples
     - theme: alt
       text: Eval and benchmarks
-      link: /api-examples
+      link: /evaluation/benchmarks
 
 features:
-  - title: Feature A
+  - title: Find sinks and sources 
     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
+  - title: For devs and security researchers
     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
+  - title: Add you tools and MCP servers
     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
 

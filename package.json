@@ -6,7 +6,8 @@
   },
   "devDependencies": {
     "mermaid": "^11.9.0",
-    "vitepress": "^1.6.3",
+    "typescript": "^6.0.0-dev.20250827",
+    "vitepress": "^2.0.0-alpha.12",
     "vitepress-plugin-mermaid": "^2.0.17"
   }
 }

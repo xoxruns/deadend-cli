@@ -19,6 +19,9 @@ The context that is taken into account in each session is :
 While this solves the context issue, it also leads to context overflow when we send the request. 
 Thus, the need of implementing context LLM compression before handing off to the next agent. 
 
+### Context engineering for security analysis agent
+> 
+
 
 ## Components 
 
@@ -27,6 +30,8 @@ Thus, the need of implementing context LLM compression before handing off to the
 
 ## Memory system
 
-### Target persona memory
+
+### web app persona memory
+
 
 ## Reporter 

@@ -4,7 +4,7 @@ import { withMermaid } from "vitepress-plugin-mermaid";
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "Deadend CLI",
-  description: "Security analysis using code indexing and Language Models",
+  description: "Agentic security testing",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
@@ -19,27 +19,40 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: '/introduction' },
           { text: 'Install', link: '/installation' },
-          { text: 'first target', link: '/first-target' },
           { text: 'Usage', link: '/usage' },
+          { text: 'first target', link: '/first-target' },
           { text: 'Features', link: '/features'}
+        ]
+      },
+            {
+        text: 'Run locally',
+        collapsed: true,
+        items: [
+          { text: 'Setup', link: '/introduction' },
+          { text: 'Vector database', link: '/installation' },
+          { text: 'local model provider', link: '/first-target' },
+          { text: 'Sandbox', link: '/usage' },
+        ]
+      },
+      {
+        text: 'Eval & Benchmarks',
+        collapsed: true,
+        items: [
+          { text: 'Benchmarks used', link: '/evaluation/benchmarks' },
+          { text: 'Web vulnerabilties', link: '/evaluation/complex_vulns' }
         ]
       },
       {
         text: 'Architecture',
         collapsed: true,
         items: [
+          { text: 'Agentic architecture', link: '/architecture/agentic_architecture' },
+          { text: 'Web application testing implementation', link: '/architecture/webapp_testing'}, 
           { text: 'Web resource extractor', link: '/architecture/web_extractor' },
           { text: 'Runtime API Examples', link: '/api-examples' }
         ]
       }, 
-      {
-        text: 'Eval & Benchmarks',
-        collapsed: true,
-        items: [
-          { text: 'Web resource extractor', link: '/architecture/web_extractor' },
-          { text: 'Runtime API Examples', link: '/api-examples' }
-        ]
-      },
+
       {
         text: 'Research',
         collapsed: true,
