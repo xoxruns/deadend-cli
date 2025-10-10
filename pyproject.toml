@@ -75,6 +75,7 @@ include = [
     "deadend_cli/prompts/*.jinja2",
     "deadend_cli/prompts/tools/*.jinja2",
     "deadend_cli/data/*.json",
+    "deadend_cli/data/memory/*.json"
 ]
 
 [build-system]

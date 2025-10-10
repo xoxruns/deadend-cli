@@ -10,7 +10,7 @@ initialization, and provider-specific model abstractions.
 """
 
 from typing import Dict
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.providers.openai import OpenAIProvider
@@ -19,7 +19,7 @@ from pydantic_ai.providers.google import GoogleProvider
 
 from deadend_cli.core.config import Config
 # AIModel abstraction
-AIModel = OpenAIModel | AnthropicModel | GoogleModel
+AIModel = OpenAIChatModel | AnthropicModel | GoogleModel
 
 class ModelRegistry:
     def __init__(self, config: Config):
@@ -31,7 +31,7 @@ class ModelRegistry:
 
         if models_settings.openai:
             openai_settings = models_settings.openai
-            self._models['openai'] = OpenAIModel(
+            self._models['openai'] = OpenAIChatModel(
                 model_name=openai_settings.model_name,
                 provider=OpenAIProvider(api_key=openai_settings.api_key)
             )
@@ -49,21 +49,21 @@ class ModelRegistry:
                 model_name=gemini_settings.model_name,
                 provider=GoogleProvider(api_key=gemini_settings.api_key),
             )
-        
+
     def get_model(self, provider: str = 'openai') -> AIModel:
         if provider not in self._models:
             raise ValueError(f"Model provider {provider} not supported.")
         elif self._models == {}:
             raise ValueError("No model was instantiated. Have you tried supplying an API key for the Model?")
         return self._models[provider]
-    
+
     def list_configured_providers(self) -> list[str]:
         return list(self._models.keys())
-    
+
     def has_any_model(self) -> bool:
         """Return True if at least one model provider is configured."""
         return len(self._models) > 0
-    
+
     # Evaluation
     def get_all_models(self) -> Dict[str, AIModel]:
         return self._models.copy()

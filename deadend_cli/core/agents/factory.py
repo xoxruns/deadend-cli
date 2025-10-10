@@ -56,6 +56,11 @@ class AgentRunner:
         usage_limits: UsageLimits | None,
         deferred_tool_results: DeferredToolResults | None = None,
     ):
+        # Checking if the number of tokens doesn't exceed the number of tokens accepted by the 
+        # Model
+        # Handling rate-limits
+        # Handling token number reports
+        # Handling interruptions
         # Normal running
         return await self.agent.run(
             user_prompt=user_prompt,

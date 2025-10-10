@@ -4,7 +4,11 @@
 
 """Playwright-based HTTP request handler with enhanced session management and redirect handling."""
 import asyncio
-from typing import Dict, Any, Optional, Union, Tuple
+import re
+import json
+from urllib.parse import urlparse, parse_qs
+from typing import Dict, Any, List, Optional, Union, Tuple
+from anyio import Path
 from playwright.async_api import async_playwright
 from rich.panel import Panel
 from rich import box
@@ -22,7 +26,12 @@ class PlaywrightSessionManager:
     _lock = asyncio.Lock()
 
     @classmethod
-    async def get_session(cls, session_key: str, verify_ssl: bool = True, proxy_url: Optional[str] = None) -> 'PlaywrightRequester':
+    async def get_session(
+        cls,
+        session_key: str,
+        verify_ssl: bool = True,
+        proxy_url: Optional[str] = None
+    ) -> 'PlaywrightRequester':
         """
         Get or create a PlaywrightRequester session.
         
@@ -38,7 +47,6 @@ class PlaywrightSessionManager:
             if session_key not in cls._instances:
                 cls._instances[session_key] = PlaywrightRequester(verify_ssl, proxy_url)
                 await cls._instances[session_key]._initialize()
-            
             return cls._instances[session_key]
 
     @classmethod
@@ -103,7 +111,6 @@ class PlaywrightRequester:
         browser_options = {
             'headless': True,
         }
-
         self.browser = await self.playwright.chromium.launch(**browser_options)
 
         # Configure browser context options
@@ -118,6 +125,17 @@ class PlaywrightRequester:
         self.context = await self.browser.new_context(**context_options)
         self.request_context = self.context.request
         self._initialized = True
+
+    async def _inject_auth_headers(self, headers: Dict[str, str]) -> Dict[str, str]:
+        """Inject authentication headers if found in localstorage"""
+        enhanced_headers = headers.copy()
+        auth_token = await self.get_localstorage_value('auth_token')
+        if auth_token:
+            enhanced_headers["Authorization"] = f"Bearer {auth_token}"
+        api_key = await self.get_localstorage_value('api_key')
+        if api_key:
+            enhanced_headers["X-API-Key"] = api_key
+        return enhanced_headers
 
     async def _cleanup(self):
         """Clean up Playwright resources."""
@@ -169,32 +187,46 @@ class PlaywrightRequester:
         parsed_request = self._parse_raw_request(request_data)
         if not parsed_request:
             return "Failed to parse HTTP request"
+                # Display the response in a panel
+        request_panel = Panel(
+            request_data,
+            title="[bold green]HTTP Request[/bold green]",
+            border_style="green",
+            box=box.ROUNDED
+        )
+        console_printer.print(request_panel)
 
-        # Build the target URL
         protocol = "https" if is_tls else "http"
+        # TODO: still not tested 
         if via_proxy:
-            # When using proxy, we need to construct the full URL
             target_url = f"{protocol}://{target_host}{parsed_request['path']}"
         else:
-            # Direct connection
             target_url = f"{protocol}://{host}:{port}{parsed_request['path']}"
 
+        # get local storage headers to see if there is any needed headers to be added
+        # to the request
+        local_storage = await self.get_all_localstorage()
+        new_headers = await self._inject_auth_headers(local_storage)
+        new_headers.update(parsed_request['headers'])
         try:
             # Send the request using Playwright
             response = await self._send_request(
                 method=parsed_request['method'],
                 url=target_url,
-                headers=parsed_request['headers'],
+                headers=new_headers,
                 body=parsed_request['body'],
                 follow_redirects=True,
                 max_redirects=20
             )
+            # Detecting and storing access keys or important reusable tokens
+            # from the request
+            await self._detect_and_store_tokens(response_body=response, url=target_url)
 
             # Format the response similar to the original requester
             formatted_response = await self._format_response(response)
 
-            # Display the response in a panel
             response_panel = Panel(
+
                 formatted_response,
                 title="[bold green]HTTP Response[/bold green]",
                 border_style="green",
@@ -202,7 +234,8 @@ class PlaywrightRequester:
             )
             console_printer.print(response_panel)
 
-            return formatted_response.encode('utf-8') if isinstance(formatted_response, str) else formatted_response
+            return formatted_response.encode('utf-8') \
+                if isinstance(formatted_response, str) else formatted_response
 
         except (ValueError, IndexError, AttributeError, ConnectionError) as e:
             error_message = f"Request failed: {str(e)}"
@@ -264,8 +297,8 @@ class PlaywrightRequester:
         except (ValueError, IndexError, AttributeError):
             return None
 
-    async def _send_request(self, method: str, url: str, headers: Dict[str, str], 
-                          body: str, follow_redirects: bool = True, 
+    async def _send_request(self, method: str, url: str, headers: Dict[str, str],
+                          body: str, follow_redirects: bool = True,
                           max_redirects: int = 20) -> Any:
         """
         Send HTTP request using Playwright's APIRequestContext.
@@ -344,6 +377,120 @@ class PlaywrightRequester:
         except (UnicodeDecodeError, AttributeError, KeyError) as e:
             return f"Error formatting response: {str(e)}"
 
+    async def _detect_and_store_tokens(self, response_body: str, url: str):
+        try:
+            domain = urlparse(url).netloc
+            # JSON
+            await self._detect_json_tokens(response_body, domain)
+            # HTML parsing
+            await self._detect_html_tokens(response_body, domain)
+            # URL parameters
+            await self._detect_url_tokens(url, domain)
+            # Try text patterns
+            await self._detect_text_tokens(response_body, domain)
+            # Try XML parsing
+            await self._detect_xml_tokens(response_body, domain)
+        except Exception as e:
+            print(f"Error detecting tokens: {e}")
+
+    async def _detect_json_tokens(self, json_content: str, domain: str):
+        try:
+            data = json.loads(json_content)
+            token_patterns = {
+                'access_token': ['access_token', 'accessToken', 'access-token'],
+                'refresh_token': ['refresh_token', 'refreshToken', 'refresh-token'],
+                'id_token': ['id_token', 'idToken', 'id-token'],
+                'auth_token': ['token', 'auth_token', 'authToken', 'auth-token']
+            }
+            for storage_key, field_names in token_patterns.items():
+                for field_name in field_names:
+                    if field_name in data:
+                        token_value = data[field_name]
+                        await self.set_localstorage_value(storage_key, token_value, domain)
+                        print(f"Auto-stored {storage_key} from response")
+        except (json.JSONDecodeError, KeyError):
+            pass
+
+    async def _detect_html_tokens(self, html_content: str, domain: str):
+        """Detect tokens in HTML content.
+        For example : 
+            <meta name="csrf-token" content="abc123xyz">
+            <meta name="auth-token" content="token_456def">
+            <meta name="api-key" content="key_789ghi">
+        """
+        # Hidden input fields
+        hidden_inputs = re.findall(
+            r'<input[^>]*type=["\']hidden["\'][^>]*name=["\']([^"\']*)["\'][^>]*value=["\']([^"\']*)["\'][^>]*>',
+            html_content
+            )
+        for name, value in hidden_inputs:
+            if 'token' in name.lower() or 'csrf' in name.lower():
+                await self.set_localstorage_value(name, value, domain)
+        # Meta tags
+        meta_tags = re.findall(
+            r'<meta[^>]*name=["\']([^"\']*)["\'][^>]*content=["\']([^"\']*)["\'][^>]*>',
+            html_content
+            )
+        for name, content in meta_tags:
+            if 'token' in name.lower() or 'csrf' in name.lower():
+                await self.set_localstorage_value(name, content, domain)
+        # JavaScript variables
+        js_vars = re.findall(r'window\.(\w*[Tt]oken\w*)\s*=\s*["\']([^"\']*)["\']', html_content)
+        for var_name, value in js_vars:
+            await self.set_localstorage_value(var_name, value, domain)
+
+    async def _detect_url_tokens(self, url: str, domain: str):
+        """Detect tokens in URL parameters.
+        defines the case : 
+        https://app.com/dashboard?token=abc123xyz&session_id=sess_456def
+        https://api.com/callback?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        """
+
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+
+        token_params = ['token', 'access_token', 'auth_token', 'session_id', 'csrf_token']
+        for param in token_params:
+            if param in params:
+                value = params[param][0]
+                await self.set_localstorage_value(param, value, domain)
+
+    async def _detect_text_tokens(self, text_content: str, domain: str):
+        """Detect tokens in plain text responses."""
+        # Key-value pairs
+        kv_patterns = [
+            r'(\w*[Tt]oken\w*)\s*[:=]\s*([^\s\n]+)',
+            r'(\w*[Tt]oken\w*)\s*=\s*([^\s\n]+)',
+            r'(\w*[Tt]oken\w*)\s*:\s*([^\s\n]+)'
+        ]
+        for pattern in kv_patterns:
+            matches = re.findall(pattern, text_content)
+            for key, value in matches:
+                await self.set_localstorage_value(key, value, domain)
+        # Delimited formats
+        delimited_patterns = [
+            r'(\w*[Tt]oken\w*)[:|;]([^|;\n]+)',
+            r'(\w*[Tt]oken\w*)\s*=\s*([^;\n]+)'
+        ]
+
+        for pattern in delimited_patterns:
+            matches = re.findall(pattern, text_content)
+            for key, value in matches:
+                await self.set_localstorage_value(key, value.strip(), domain)
+
+    async def _detect_xml_tokens(self, xml_content: str, domain: str):
+        """Detect tokens in XML responses."""
+        # XML tags containing tokens
+        xml_patterns = [
+            r'<(\w*[Tt]oken\w*)>([^<]+)</\1>',
+            r'<(\w*[Tt]oken\w*)\s+value=["\']([^"\']*)["\']',
+            r'<(\w*[Tt]oken\w*)\s+content=["\']([^"\']*)["\']'
+        ]
+        for pattern in xml_patterns:
+            matches = re.findall(pattern, xml_content)
+            for tag_name, value in matches:
+                await self.set_localstorage_value(tag_name, value, domain)
+
     async def get_cookies(self) -> Dict[str, str]:
         """
         Get current session cookies.
@@ -380,6 +527,242 @@ class PlaywrightRequester:
 
         await self.context.add_cookies(cookie_list)
 
+    async def get_localstorage(self, session_id: str) -> List[Dict]:
+        """Returns the localstorage in the browser's context"""
+        if not self._initialized or not self.context:
+            return {}
+
+        path_storage = Path.home() / ".cache" / "deadend" / "memory" / "sessions" / session_id
+        Path(path_storage).mkdir(parents=True, exist_ok=True)
+
+        localstorage = await self.context.storage_state(path_storage)
+        return localstorage['origins']
+
+    async def set_localstorage_value(self, key: str, value: str, domain: str = None):
+        """
+        Set a localStorage value for a specific domain.
+        
+        Args:
+            key (str): The localStorage key
+            value (str): The value to store
+            domain (str, optional): Domain to set the value for. If None, uses current page domain.
+        """
+        if not self._initialized or not self.context:
+            return False
+
+        try:
+            # Create a new page if we need to set localStorage for a specific domain
+            if domain:
+                page = await self.context.new_page()
+                await page.goto(f"https://{domain}")
+                await page.evaluate(f"localStorage.setItem('{key}', '{value}')")
+                await page.close()
+            else:
+                # Use existing page if available, otherwise create a new one
+                pages = self.context.pages
+                if pages:
+                    page = pages[0]
+                else:
+                    page = await self.context.new_page()
+
+                await page.evaluate(f"localStorage.setItem('{key}', '{value}')")
+
+            return True
+        except Exception as e:
+            print(f"Error setting localStorage: {e}")
+            return False
+
+    async def get_localstorage_value(self, key: str, domain: str = None):
+        """
+        Get a localStorage value for a specific domain.
+        
+        Args:
+            key (str): The localStorage key
+            domain (str, optional): Domain to get the value from. If None, uses current page domain.
+            
+        Returns:
+            str: The localStorage value or None if not found
+        """
+        if not self._initialized or not self.context:
+            return None
+
+        try:
+            if domain:
+                page = await self.context.new_page()
+                await page.goto(f"https://{domain}")
+                value = await page.evaluate(f"localStorage.getItem('{key}')")
+                await page.close()
+            else:
+                pages = self.context.pages
+                if pages:
+                    page = pages[0]
+                else:
+                    page = await self.context.new_page()
+
+                value = await page.evaluate(f"localStorage.getItem('{key}')")
+
+            return value
+        except Exception as e:
+            print(f"Error getting localStorage: {e}")
+            return None
+
+    async def remove_localstorage_value(self, key: str, domain: str = None):
+        """
+        Remove a localStorage value for a specific domain.
+        
+        Args:
+            key (str): The localStorage key to remove
+            domain (str, optional): Domain to remove the value from. 
+                If None, uses current page domain.
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self._initialized or not self.context:
+            return False
+
+        try:
+            if domain:
+                page = await self.context.new_page()
+                await page.goto(f"https://{domain}")
+                await page.evaluate(f"localStorage.removeItem('{key}')")
+                await page.close()
+            else:
+                pages = self.context.pages
+                if pages:
+                    page = pages[0]
+                else:
+                    page = await self.context.new_page()
+
+                await page.evaluate(f"localStorage.removeItem('{key}')")
+            return True
+        except Exception as e:
+            print(f"Error removing localStorage: {e}")
+            return False
+
+    async def clear_localstorage(self, domain: str = None):
+        """
+        Clear all localStorage values for a specific domain.
+        
+        Args:
+            domain (str, optional): Domain to clear localStorage for. If None, uses current page domain.
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self._initialized or not self.context:
+            return False
+
+        try:
+            if domain:
+                page = await self.context.new_page()
+                await page.goto(f"https://{domain}")
+                await page.evaluate("localStorage.clear()")
+                await page.close()
+            else:
+                pages = self.context.pages
+                if pages:
+                    page = pages[0]
+                else:
+                    page = await self.context.new_page()
+
+                await page.evaluate("localStorage.clear()")
+
+            return True
+        except Exception as e:
+            print(f"Error clearing localStorage: {e}")
+            return False
+
+    async def get_all_localstorage(self, domain: str = None):
+        """
+        Get all localStorage key-value pairs for a specific domain.
+        
+        Args:
+            domain (str, optional): Domain to get localStorage from. If None, uses current page domain.
+            
+        Returns:
+            dict: Dictionary of all localStorage key-value pairs
+        """
+        if not self._initialized or not self.context:
+            return {}
+
+        try:
+            if domain:
+                page = await self.context.new_page()
+                await page.goto(f"https://{domain}")
+                storage = await page.evaluate("""
+                    () => {
+                        const storage = {};
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            storage[key] = localStorage.getItem(key);
+                        }
+                        return storage;
+                    }
+                """)
+                await page.close()
+            else:
+                pages = self.context.pages
+                if pages:
+                    page = pages[0]
+                else:
+                    page = await self.context.new_page()
+                
+                storage = await page.evaluate("""
+                    () => {
+                        const storage = {};
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            storage[key] = localStorage.getItem(key);
+                        }
+                        return storage;
+                    }
+                """)
+            
+            return storage
+        except Exception as e:
+            print(f"Error getting all localStorage: {e}")
+            return {}
+
+    async def set_multiple_localstorage(self, storage_dict: Dict[str, str], domain: str = None):
+        """
+        Set multiple localStorage key-value pairs for a specific domain.
+        
+        Args:
+            storage_dict (Dict[str, str]): Dictionary of key-value pairs to set
+            domain (str, optional): Domain to set the values for. If None, uses current page domain.
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self._initialized or not self.context:
+            return False
+
+        try:
+            if domain:
+                page = await self.context.new_page()
+                await page.goto(f"https://{domain}")
+                
+                # Set all key-value pairs
+                for key, value in storage_dict.items():
+                    await page.evaluate(f"localStorage.setItem('{key}', '{value}')")
+                
+                await page.close()
+            else:
+                pages = self.context.pages
+                if pages:
+                    page = pages[0]
+                else:
+                    page = await self.context.new_page()
+                # Set all key-value pairs
+                for key, value in storage_dict.items():
+                    await page.evaluate(f"localStorage.setItem('{key}', '{value}')")
+
+            return True
+        except Exception as e:
+            print(f"Error setting multiple localStorage values: {e}")
+            return False
+
     async def clear_session(self):
         """Clear all session data (cookies, local storage, etc.)."""
         if not self._initialized or not self.context:
@@ -387,6 +770,14 @@ class PlaywrightRequester:
 
         await self.context.clear_cookies()
         await self.context.clear_permissions()
+
+        # Clear localStorage for all pages in the context
+        try:
+            pages = self.context.pages
+            for page in pages:
+                await page.evaluate("localStorage.clear()")
+        except Exception as e:
+            print(f"Warning: Could not clear localStorage: {e}")
 
 
 async def send_payload_with_playwright(
@@ -446,14 +837,14 @@ async def send_payload_with_playwright(
 
     # Create a session key based on target host and proxy settings
     session_key = f"{host}:{port}:{proxy}:{verify_ssl}"
-    
+
     # Get or create a persistent session
     playwright_req = await PlaywrightSessionManager.get_session(
         session_key=session_key,
         verify_ssl=verify_ssl,
         proxy_url=proxy_url
     )
-    
+
     response = await playwright_req.send_raw_data(
         host=host,
         port=port,

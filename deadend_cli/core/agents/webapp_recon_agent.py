@@ -45,8 +45,8 @@ class WebappReconAgent(AgentRunner):
             "is_valid_request": render_tool_description("is_valid_request"),
             "send_payload": render_tool_description("send_payload"),
             # "sandboxed_shell_tool": render_tool_description("sandboxed_shell_tool"),
-            # "webapp_code_rag": render_tool_description("webapp_code_rag")
-        } 
+            "webapp_code_rag": render_tool_description("webapp_code_rag")
+        }
 
         self.instructions = render_agent_instructions(
             agent_name="webapp_recon",
@@ -55,7 +55,7 @@ class WebappReconAgent(AgentRunner):
         )
         super().__init__(
             name="webapp_recon",
-            model=model, 
+            model=model,
             instructions=self.instructions,
             deps_type=deps_type,
             output_type=[RequesterOutput, DeferredToolRequests],
