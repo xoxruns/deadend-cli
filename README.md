@@ -1,5 +1,18 @@
 # Deadend CLI
 
+
+> [!IMPORTANT]  
+> It's been a few months that we didn't upload any new release. And the reason is that we are working on a better version for the harness (our current pro version that we plan to release).
+>
+> We will post the roadmap soon but here is some information (open to discussion in the discord),
+>   - Adapatable harness to work with other coding agents.
+>   - Authentication handling
+>   - WAFs bypasses
+>   - and much more
+>
+> Join us on the discord to discuss more about it !  
+
+
 [![Discord - Deadend CLI](https://img.shields.io/badge/Discord-Deadend%20CLI-5865F2?logo=discord&logoColor=white)](https://discord.gg/zwUVa3E7KT)
 
 **Autonomous pentesting agent using feedback-driven iteration**
