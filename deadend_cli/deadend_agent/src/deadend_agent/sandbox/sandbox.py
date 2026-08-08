@@ -197,10 +197,10 @@ class Sandbox(BaseModel):
             return container
         except ImageNotFound as exc:
             logger.error("Image not found %s", container_image)
-            raise ImageNotFound from exc
+            raise exc
         except NotFound as exc:
             logger.error("Docker error: %s", exc.explanation)
-            raise NotFound from exc
+            raise exc
         except Exception as exc:
             self.status = SandboxStatus.ERROR
             logger.error("Error starting container: %s", exc)
